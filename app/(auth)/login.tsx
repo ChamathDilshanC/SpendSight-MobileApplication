@@ -16,24 +16,39 @@ import { useAuth } from "../../context/FirebaseAuthContext";
 import { NavigationManager } from "../../utils/navigationManager";
 
 export default function LoginScreen() {
-  const router = useRouter();
   const { login, signInWithGoogle, signInWithApple, authState, clearError } =
     useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
-    const success = await login(formData);
-    if (success) {
-      // Navigate to dashboard and clear auth history
-      console.log("✅ Login successful, navigating to dashboard...");
-      NavigationManager.navigateToDashboard();
-    } else if (authState.error) {
-      Alert.alert("Login Failed", authState.error, [
-        { text: "OK", onPress: clearError },
-      ]);
+    // Prevent multiple rapid submissions
+    if (isSubmitting || authState.isLoading) {
+      console.log("🚫 Login already in progress, ignoring button press");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const success = await login(formData);
+      if (success) {
+        // Navigate to dashboard and clear auth history
+        console.log("✅ Login successful, navigating to dashboard...");
+        NavigationManager.navigateToDashboard();
+      } else if (authState.error) {
+        Alert.alert("Login Failed", authState.error, [
+          { text: "OK", onPress: clearError },
+        ]);
+      }
+    } finally {
+      // Add a small delay to prevent rapid re-submission
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 1000);
     }
   };
 
@@ -149,13 +164,17 @@ export default function LoginScreen() {
               <TouchableOpacity
                 onPress={handleLogin}
                 className={`py-4 rounded-xl mb-6 ${
-                  authState.isLoading ? "bg-blue-400" : "bg-[#0077CC]"
+                  authState.isLoading || isSubmitting
+                    ? "bg-blue-400"
+                    : "bg-[#0077CC]"
                 }`}
                 activeOpacity={0.8}
-                disabled={authState.isLoading}
+                disabled={authState.isLoading || isSubmitting}
               >
                 <Text className="text-white text-center font-bold text-lg">
-                  {authState.isLoading ? "Logging in..." : "Login"}
+                  {authState.isLoading || isSubmitting
+                    ? "Logging in..."
+                    : "Login"}
                 </Text>
               </TouchableOpacity>
 
