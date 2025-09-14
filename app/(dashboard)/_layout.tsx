@@ -2,10 +2,10 @@ import { Stack } from "expo-router";
 import "react-native-reanimated";
 
 export const unstable_settings = {
-  anchor: "(tabs)",
+  anchor: "(dashboard)",
 };
 
-export default function GetStartedLayout() {
+export default function DashboardLayout() {
   return (
     <Stack
       screenOptions={{
@@ -14,7 +14,7 @@ export default function GetStartedLayout() {
         animation: "none",
       }}
     >
-      <Stack.Screen name="getStartedScreen" options={{ headerShown: false }} />
+      <Stack.Screen name="dashboard" options={{ headerShown: false }} />
     </Stack>
   );
 }
