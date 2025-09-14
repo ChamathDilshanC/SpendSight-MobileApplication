@@ -132,7 +132,7 @@ const GetStartedScreen = () => {
               transition={{
                 opacity: { type: "timing", duration: 600, delay: 800 },
               }}
-              className="items-center"
+              className="items-center mb-5"
             >
               <TouchableOpacity onPress={handleLogin} activeOpacity={0.7}>
                 <Text className="text-white/80 text-base">
