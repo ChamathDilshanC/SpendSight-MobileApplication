@@ -147,9 +147,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Listen to Firebase auth state changes and check stored sessions
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let isInitializing = true;
 
     const initializeAuth = async () => {
       try {
+        console.log("🔄 Initializing authentication...");
+
         // First, check if we have a valid stored session
         const validSession = await SessionManager.getValidSession();
 
@@ -160,11 +163,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
           // If we have a valid session, set up Firebase auth listener
           unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
+            if (firebaseUser && firebaseUser.email === validSession.email) {
               try {
                 const user = await convertFirebaseUser(firebaseUser);
                 dispatch({ type: "LOGIN_SUCCESS", payload: user });
-                console.log("✅ User restored from session");
+                if (isInitializing) {
+                  console.log("✅ User restored from session");
+                  isInitializing = false;
+                }
               } catch (error) {
                 console.error("Error converting Firebase user:", error);
                 // If conversion fails, clear the session
@@ -174,13 +180,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                   payload: "Failed to load user data",
                 });
               }
-            } else {
+            } else if (!firebaseUser && isInitializing) {
               // Firebase user not found but session exists - session is invalid
               console.log(
                 "⚠️ Session exists but Firebase user not found, clearing session"
               );
               await SessionManager.clearSession();
               dispatch({ type: "LOGOUT" });
+              isInitializing = false;
             }
           });
         } else {
@@ -199,6 +206,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                   firebaseUser.email || ""
                 );
                 dispatch({ type: "LOGIN_SUCCESS", payload: user });
+                if (isInitializing) {
+                  console.log("✅ User authenticated from fresh login");
+                  isInitializing = false;
+                }
               } catch (error) {
                 console.error("Error converting Firebase user:", error);
                 dispatch({
@@ -206,14 +217,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                   payload: "Failed to load user data",
                 });
               }
-            } else {
+            } else if (isInitializing) {
               dispatch({ type: "LOGOUT" });
+              isInitializing = false;
             }
           });
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
         dispatch({ type: "LOGOUT" });
+        isInitializing = false;
       }
     };
 
@@ -221,6 +234,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     // Cleanup function
     return () => {
+      isInitializing = false;
       if (unsubscribe) {
         unsubscribe();
       }
@@ -314,6 +328,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Login function
   const login = async (loginData: UserLoginData): Promise<boolean> => {
     try {
+      // Prevent multiple simultaneous login attempts
+      if (authState.isLoading) {
+        console.log("⏳ Login already in progress, skipping...");
+        return false;
+      }
+
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "CLEAR_ERROR" });
 
@@ -333,12 +353,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         return false;
       }
 
+      console.log(`🔐 Attempting login for: ${email}`);
+
       // Sign in with Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        email.toLowerCase().trim(),
         password
       );
+
+      console.log(`✅ Firebase authentication successful for: ${email}`);
 
       // Save session for 10 days
       await SessionManager.saveSession(
@@ -346,6 +370,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userCredential.user.email || ""
       );
 
+      // Don't dispatch LOGIN_SUCCESS here - let the onAuthStateChanged handle it
+      console.log(`🎯 Login completed, waiting for auth state change...`);
       return true;
     } catch (error: any) {
       console.error("Login error:", error);
@@ -360,11 +386,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       } else if (error.code === "auth/too-many-requests") {
         errorMessage = "Too many failed attempts. Please try again later.";
       } else if (error.code === "auth/invalid-credential") {
-        errorMessage = "Invalid email or password";
+        errorMessage =
+          "Invalid email or password. Please check your credentials.";
+      } else if (error.code === "auth/network-request-failed") {
+        errorMessage = "Network error. Please check your connection.";
       }
 
       dispatch({ type: "SET_ERROR", payload: errorMessage });
       return false;
+    } finally {
+      // Only set loading to false on error - success will be handled by onAuthStateChanged
+      if (authState.error) {
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
     }
   };
 
