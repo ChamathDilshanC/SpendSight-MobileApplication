@@ -1,0 +1,317 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, ReactNode, useContext, useReducer } from "react";
+import {
+  AuthContextType,
+  AuthState,
+  User,
+  UserLoginData,
+  UserRegistrationData,
+} from "../types/user";
+
+// Initial state
+const initialAuthState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+};
+
+// Action types
+type AuthAction =
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_ERROR"; payload: string | null }
+  | { type: "LOGIN_SUCCESS"; payload: User }
+  | { type: "LOGOUT" }
+  | { type: "UPDATE_USER"; payload: Partial<User> }
+  | { type: "CLEAR_ERROR" };
+
+// Reducer
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case "SET_LOADING":
+      return { ...state, isLoading: action.payload };
+
+    case "SET_ERROR":
+      return { ...state, error: action.payload, isLoading: false };
+
+    case "LOGIN_SUCCESS":
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      };
+
+    case "LOGOUT":
+      return {
+        ...initialAuthState,
+      };
+
+    case "UPDATE_USER":
+      return {
+        ...state,
+        user: state.user ? { ...state.user, ...action.payload } : null,
+      };
+
+    case "CLEAR_ERROR":
+      return { ...state, error: null };
+
+    default:
+      return state;
+  }
+};
+
+// Create context
+const AuthContext = createContext<AuthContextType | null>(null);
+
+// Provider component
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [authState, dispatch] = useReducer(authReducer, initialAuthState);
+
+  // Generate unique ID (simple implementation)
+  const generateUserId = (): string => {
+    return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Validate email format
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Validate password strength
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 6; // Minimum 6 characters
+  };
+
+  // Register function
+  const register = async (
+    registrationData: UserRegistrationData
+  ): Promise<boolean> => {
+    try {
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "CLEAR_ERROR" });
+
+      const { fullName, email, password, confirmPassword } = registrationData;
+
+      // Validation
+      if (!fullName.trim()) {
+        dispatch({ type: "SET_ERROR", payload: "Full name is required" });
+        return false;
+      }
+
+      if (!validateEmail(email)) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Please enter a valid email address",
+        });
+        return false;
+      }
+
+      if (!validatePassword(password)) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Password must be at least 6 characters long",
+        });
+        return false;
+      }
+
+      if (password !== confirmPassword) {
+        dispatch({ type: "SET_ERROR", payload: "Passwords do not match" });
+        return false;
+      }
+
+      // Check if user already exists (simulate checking against stored users)
+      const existingUsers = await AsyncStorage.getItem("registeredUsers");
+      const users: User[] = existingUsers ? JSON.parse(existingUsers) : [];
+
+      if (
+        users.find((user) => user.email.toLowerCase() === email.toLowerCase())
+      ) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "An account with this email already exists",
+        });
+        return false;
+      }
+
+      // Create new user
+      const newUser: User = {
+        id: generateUserId(),
+        fullName: fullName.trim(),
+        email: email.toLowerCase(),
+        dateJoined: new Date(),
+        isActive: true,
+        preferences: {
+          currency: "USD",
+          notifications: true,
+          darkMode: true,
+        },
+      };
+
+      // Save to AsyncStorage
+      users.push(newUser);
+      await AsyncStorage.setItem("registeredUsers", JSON.stringify(users));
+      await AsyncStorage.setItem("currentUser", JSON.stringify(newUser));
+
+      // Update state
+      dispatch({ type: "LOGIN_SUCCESS", payload: newUser });
+
+      return true;
+    } catch (error) {
+      console.error("Registration error:", error);
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Registration failed. Please try again.",
+      });
+      return false;
+    }
+  };
+
+  // Login function
+  const login = async (loginData: UserLoginData): Promise<boolean> => {
+    try {
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "CLEAR_ERROR" });
+
+      const { email, password } = loginData;
+
+      // Validation
+      if (!validateEmail(email)) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Please enter a valid email address",
+        });
+        return false;
+      }
+
+      if (!password) {
+        dispatch({ type: "SET_ERROR", payload: "Password is required" });
+        return false;
+      }
+
+      // Get registered users
+      const existingUsers = await AsyncStorage.getItem("registeredUsers");
+      const users: User[] = existingUsers ? JSON.parse(existingUsers) : [];
+
+      // Find user (in a real app, you'd check against a backend)
+      const user = users.find(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+
+      if (!user) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "No account found with this email address",
+        });
+        return false;
+      }
+
+      // In a real app, you'd verify the password hash
+      // For now, we'll simulate successful login
+
+      // Save current user
+      await AsyncStorage.setItem("currentUser", JSON.stringify(user));
+
+      // Update state
+      dispatch({ type: "LOGIN_SUCCESS", payload: user });
+
+      return true;
+    } catch (error) {
+      console.error("Login error:", error);
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Login failed. Please try again.",
+      });
+      return false;
+    }
+  };
+
+  // Logout function
+  const logout = async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem("currentUser");
+      dispatch({ type: "LOGOUT" });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  // Clear error function
+  const clearError = (): void => {
+    dispatch({ type: "CLEAR_ERROR" });
+  };
+
+  // Update user function
+  const updateUser = async (userData: Partial<User>): Promise<void> => {
+    try {
+      if (!authState.user) return;
+
+      const updatedUser = { ...authState.user, ...userData };
+
+      // Update in AsyncStorage
+      await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+      // Update in registered users list
+      const existingUsers = await AsyncStorage.getItem("registeredUsers");
+      const users: User[] = existingUsers ? JSON.parse(existingUsers) : [];
+      const userIndex = users.findIndex((u) => u.id === updatedUser.id);
+
+      if (userIndex !== -1) {
+        users[userIndex] = updatedUser;
+        await AsyncStorage.setItem("registeredUsers", JSON.stringify(users));
+      }
+
+      dispatch({ type: "UPDATE_USER", payload: userData });
+    } catch (error) {
+      console.error("Update user error:", error);
+    }
+  };
+
+  // Check for existing user on app start
+  React.useEffect(() => {
+    const checkExistingUser = async () => {
+      try {
+        dispatch({ type: "SET_LOADING", payload: true });
+        const userData = await AsyncStorage.getItem("currentUser");
+
+        if (userData) {
+          const user: User = JSON.parse(userData);
+          dispatch({ type: "LOGIN_SUCCESS", payload: user });
+        } else {
+          dispatch({ type: "SET_LOADING", payload: false });
+        }
+      } catch (error) {
+        console.error("Check existing user error:", error);
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    };
+
+    checkExistingUser();
+  }, []);
+
+  const contextValue: AuthContextType = {
+    authState,
+    login,
+    register,
+    logout,
+    clearError,
+    updateUser,
+  };
+
+  return (
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  );
+};
+
+// Custom hook to use auth context
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
