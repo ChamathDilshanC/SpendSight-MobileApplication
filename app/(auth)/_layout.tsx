@@ -6,6 +6,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <Stack
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: "#1a1a1a" },
+        animation: "none",
       }}
     >
       <Stack.Screen name="signup" options={{ headerShown: false }} />
