@@ -10,6 +10,8 @@ export default function RootLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: "#1a1a1a" },
+        animation: "none", // Disable default navigation animations
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
