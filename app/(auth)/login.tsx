@@ -177,7 +177,7 @@ export default function LoginScreen() {
                     disabled={authState.isLoading}
                   >
                     <View className="w-5 h-5 mr-3">
-                      <Text className="text-lg">🔍</Text>
+                      <Text className="text-md">🔍</Text>
                     </View>
                     <Text className="text-gray-700 text-base font-medium">
                       Continue with Google
@@ -191,8 +191,8 @@ export default function LoginScreen() {
                       onPress={handleAppleSignIn}
                       disabled={authState.isLoading}
                     >
-                      <View className="w-5 h-5 mr-3">
-                        <Text className="text-lg">🍎</Text>
+                      <View className="w-5 h-5 mr-3 ">
+                        <Text className="text-md">🍎</Text>
                       </View>
                       <Text className="text-white text-base font-medium">
                         Continue with Apple
