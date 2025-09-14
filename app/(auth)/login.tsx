@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,23 +12,59 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuth } from "../../context/FirebaseAuthContext";
+import { NavigationManager } from "../../utils/navigationManager";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login, signInWithGoogle, signInWithApple, authState, clearError } =
+    useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const handleLogin = () => {
-    // Add your login logic here
-    console.log("Login with:", formData);
-    // Navigate to main app
-    router.push("/");
+  const handleLogin = async () => {
+    const success = await login(formData);
+    if (success) {
+      // Navigate to dashboard and clear auth history
+      console.log("✅ Login successful, navigating to dashboard...");
+      NavigationManager.navigateToDashboard();
+    } else if (authState.error) {
+      Alert.alert("Login Failed", authState.error, [
+        { text: "OK", onPress: clearError },
+      ]);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    const success = await signInWithGoogle();
+    if (success) {
+      // Navigate to dashboard and clear auth history
+      console.log("✅ Google sign-in successful, navigating to dashboard...");
+      NavigationManager.navigateToDashboard();
+    } else if (authState.error) {
+      Alert.alert("Google Sign-In Failed", authState.error, [
+        { text: "OK", onPress: clearError },
+      ]);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    const success = await signInWithApple();
+    if (success) {
+      // Navigate to dashboard and clear auth history
+      console.log("✅ Apple sign-in successful, navigating to dashboard...");
+      NavigationManager.navigateToDashboard();
+    } else if (authState.error) {
+      Alert.alert("Apple Sign-In Failed", authState.error, [
+        { text: "OK", onPress: clearError },
+      ]);
+    }
   };
 
   const goToSignup = () => {
-    router.push("/(auth)/signup");
+    NavigationManager.navigateToSignup();
   };
 
   return (
@@ -111,13 +148,59 @@ export default function LoginScreen() {
               {/* Login Button */}
               <TouchableOpacity
                 onPress={handleLogin}
-                className="bg-[#0077CC] py-4 rounded-xl mb-6"
+                className={`py-4 rounded-xl mb-6 ${
+                  authState.isLoading ? "bg-blue-400" : "bg-[#0077CC]"
+                }`}
                 activeOpacity={0.8}
+                disabled={authState.isLoading}
               >
                 <Text className="text-white text-center font-bold text-lg">
-                  Login
+                  {authState.isLoading ? "Logging in..." : "Login"}
                 </Text>
               </TouchableOpacity>
+
+              {/* Social Sign-In Options */}
+              <View className="mb-6">
+                <View className="flex-row items-center mb-6">
+                  <View className="flex-1 h-px bg-gray-600" />
+                  <Text className="text-gray-400 text-sm mx-4">
+                    Or continue with
+                  </Text>
+                  <View className="flex-1 h-px bg-gray-600" />
+                </View>
+
+                <View className="space-y-3 mb-6">
+                  {/* Google Sign-In Button */}
+                  <TouchableOpacity
+                    className="bg-white rounded-xl py-4 px-4 flex-row items-center justify-center shadow-md active:bg-gray-100 mb-3"
+                    onPress={handleGoogleSignIn}
+                    disabled={authState.isLoading}
+                  >
+                    <View className="w-5 h-5 mr-3">
+                      <Text className="text-lg">🔍</Text>
+                    </View>
+                    <Text className="text-gray-700 text-base font-medium">
+                      Continue with Google
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Apple Sign-In Button (iOS only) */}
+                  {Platform.OS === "ios" && (
+                    <TouchableOpacity
+                      className="bg-black border border-gray-700 rounded-xl py-4 px-4 flex-row items-center justify-center shadow-md active:bg-gray-900"
+                      onPress={handleAppleSignIn}
+                      disabled={authState.isLoading}
+                    >
+                      <View className="w-5 h-5 mr-3">
+                        <Text className="text-lg">🍎</Text>
+                      </View>
+                      <Text className="text-white text-base font-medium">
+                        Continue with Apple
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
 
               {/* Signup Link */}
               <View className="items-center">
