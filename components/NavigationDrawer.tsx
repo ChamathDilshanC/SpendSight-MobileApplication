@@ -38,9 +38,11 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
   isActive = false,
 }) => (
   <TouchableOpacity
-    className={`flex-row items-center py-4 px-5 border-b border-gray-100 min-h-[64px] transition-colors ${
-      isActive ? "bg-emerald-50 border-emerald-100" : "active:bg-gray-50"
-    }`}
+    className={
+      isActive
+        ? "flex-row items-center py-4 px-5 border-b border-emerald-100 min-h-[64px] bg-emerald-50"
+        : "flex-row items-center py-4 px-5 border-b border-gray-100 min-h-[64px] active:bg-gray-50"
+    }
     onPress={() => {
       console.log(`🎯 DrawerItem clicked: ${title}`);
       onPress();
@@ -51,7 +53,7 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
     }}
   >
     {/* Icon container with proper spacing */}
-    <View className="w-8 h-8 mr-4 justify-center items-center">
+    <View className="items-center justify-center w-8 h-8 mr-4">
       <Ionicons
         name={icon as any}
         size={22}
@@ -60,9 +62,11 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
     </View>
 
     <Text
-      className={`text-base font-medium flex-1 ${
-        isActive ? "text-emerald-700" : "text-gray-700"
-      }`}
+      className={
+        isActive
+          ? "text-base font-medium flex-1 text-emerald-700"
+          : "text-base font-medium flex-1 text-gray-700"
+      }
     >
       {title}
     </Text>
@@ -87,6 +91,12 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
   // Add debugging for drawer visibility
   console.log("🎭 NavigationDrawer render - isVisible:", isVisible);
+
+  // Safety check for authState
+  if (!authState || !authState.user) {
+    console.log("❌ NavigationDrawer: authState or user is missing");
+    return null;
+  }
 
   const handleLogout = async () => {
     onClose();
@@ -189,7 +199,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
           {/* Header with user info - Enhanced with rounded top and gradient */}
           <View
-            className="pb-6 px-5 border-b border-gray-200"
+            className="px-5 pb-6 border-b border-gray-200"
             style={{
               paddingTop: insets.top + 20,
               backgroundColor: "#F8FAFC",
@@ -198,7 +208,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           >
             <View className="flex-row items-center">
               <View
-                className="w-16 h-16 rounded-full justify-center items-center mr-4 shadow-sm"
+                className="items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm"
                 style={{
                   backgroundColor: "#10B981",
                   shadowColor: "#10B981",
@@ -209,18 +219,26 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 }}
               >
                 <Text className="text-2xl font-bold text-white">
-                  {authState.user?.fullName?.charAt(0).toUpperCase() || "U"}
+                  {authState?.user?.fullName
+                    ? authState.user.fullName.charAt(0).toUpperCase()
+                    : "U"}
                 </Text>
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-gray-800 mb-1">
-                  {authState.user?.fullName || "User Name"}
+                <Text className="mb-1 text-lg font-semibold text-gray-800">
+                  {authState?.user?.fullName &&
+                  typeof authState.user.fullName === "string"
+                    ? authState.user.fullName
+                    : "User Name"}
                 </Text>
                 <Text className="text-sm text-gray-500">
-                  {authState.user?.email || "user@example.com"}
+                  {authState?.user?.email &&
+                  typeof authState.user.email === "string"
+                    ? authState.user.email
+                    : "user@example.com"}
                 </Text>
                 <View className="mt-2">
-                  <View className="w-8 h-1 bg-emerald-400 rounded-full" />
+                  <View className="w-8 h-1 rounded-full bg-emerald-400" />
                 </View>
               </View>
             </View>
@@ -300,15 +318,15 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             }}
           >
             <TouchableOpacity
-              className="flex-row items-center py-4 px-5 active:bg-red-50 transition-colors"
+              className="flex-row items-center px-5 py-4 transition-colors active:bg-red-50"
               onPress={handleLogout}
               activeOpacity={0.6}
             >
               {/* Icon container for logout with proper spacing */}
-              <View className="w-8 h-8 mr-4 justify-center items-center">
+              <View className="items-center justify-center w-8 h-8 mr-4">
                 <Ionicons name="log-out-outline" size={22} color="#EF4444" />
               </View>
-              <Text className="text-base text-red-500 font-medium flex-1">
+              <Text className="flex-1 text-base font-medium text-red-500">
                 Logout
               </Text>
               <Ionicons
@@ -324,10 +342,10 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 borderBottomRightRadius: 24, // Match drawer border radius
               }}
             >
-              <Text className="text-xs text-gray-400 font-medium">
+              <Text className="text-xs font-medium text-gray-400">
                 Powered by SpendSight
               </Text>
-              <Text className="text-xs text-gray-300 mt-1">v1.0.0</Text>
+              <Text className="mt-1 text-xs text-gray-300">v1.0.0</Text>
             </View>
           </View>
         </Animated.View>
