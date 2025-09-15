@@ -104,7 +104,7 @@ export class GoalService {
   }
 
   /**
-   * Make a manual payment towards a goal
+   * Make a manual payment towards a goal (deposit)
    */
   static async payTowardGoal(
     userId: string,
@@ -116,12 +116,12 @@ export class GoalService {
     try {
       // Create a transaction for the goal payment
       const transactionId = await TransactionService.createTransaction(userId, {
-        type: "expense",
+        type: "goal_payment",
         amount,
         currency: "USD",
         description,
         fromAccountId,
-        categoryId: undefined, // Goals don't have categories
+        // categoryId omitted for goal transactions
         date: new Date(),
         goalId,
         isRecurring: false,
@@ -139,6 +139,191 @@ export class GoalService {
       return transactionId;
     } catch (error) {
       console.error("❌ Error processing goal payment:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Withdraw money from a goal back to an account
+   */
+  static async withdrawFromGoal(
+    userId: string,
+    goalId: string,
+    toAccountId: string,
+    amount: number,
+    description: string = "Goal withdrawal"
+  ): Promise<string> {
+    try {
+      // Validate that goal has enough balance for withdrawal
+      const goals = await this.getUserGoals(userId);
+      const goal = goals.find((g) => g.id === goalId);
+
+      if (!goal) {
+        throw new Error("Goal not found");
+      }
+
+      if (goal.currentAmount < amount) {
+        throw new Error(
+          `Insufficient goal balance. Available: $${goal.currentAmount.toFixed(2)}, Requested: $${amount.toFixed(2)}`
+        );
+      }
+
+      // Create a transaction for the goal withdrawal (income to the account)
+      const transactionId = await TransactionService.createTransaction(userId, {
+        type: "goal_payment",
+        amount,
+        currency: "USD",
+        description,
+        toAccountId, // Money goes TO the account
+        // categoryId omitted for goal transactions
+        date: new Date(),
+        goalId,
+        isRecurring: false,
+        tags: ["goal-withdrawal"],
+      });
+
+      // Update the goal's current amount (decrease)
+      const goalRef = doc(db, "goals", goalId);
+      await updateDoc(goalRef, {
+        currentAmount: increment(-amount), // Negative increment to subtract
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log("✅ Goal withdrawal processed:", goalId, "amount:", amount);
+      return transactionId;
+    } catch (error) {
+      console.error("❌ Error processing goal withdrawal:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set up automatic transfers for a goal
+   */
+  static async setupAutoTransfer(
+    goalId: string,
+    autoPaymentSettings: {
+      enabled: boolean;
+      fromAccountId?: string;
+      amount?: number;
+      frequency?: "daily" | "weekly" | "biweekly" | "monthly";
+      nextPaymentDate?: Date;
+    }
+  ): Promise<void> {
+    try {
+      let nextPaymentDate: Date | undefined;
+
+      if (autoPaymentSettings.enabled && autoPaymentSettings.frequency) {
+        const now = new Date();
+        nextPaymentDate = new Date(now);
+
+        switch (autoPaymentSettings.frequency) {
+          case "daily":
+            nextPaymentDate.setDate(now.getDate() + 1);
+            break;
+          case "weekly":
+            nextPaymentDate.setDate(now.getDate() + 7);
+            break;
+          case "biweekly":
+            nextPaymentDate.setDate(now.getDate() + 14);
+            break;
+          case "monthly":
+            nextPaymentDate.setMonth(now.getMonth() + 1);
+            break;
+        }
+      }
+
+      const goalRef = doc(db, "goals", goalId);
+
+      // Filter out undefined values to prevent Firebase errors
+      const filteredAutoPaymentSettings = Object.fromEntries(
+        Object.entries(autoPaymentSettings).filter(
+          ([_, value]) => value !== undefined
+        )
+      );
+
+      const updateData: any = {
+        autoPayment: {
+          ...filteredAutoPaymentSettings,
+        },
+        updatedAt: serverTimestamp(),
+      };
+
+      // Only add nextPaymentDate if it's not undefined
+      if (nextPaymentDate !== undefined) {
+        updateData.autoPayment.nextPaymentDate = nextPaymentDate;
+      }
+
+      await updateDoc(goalRef, updateData);
+
+      console.log("✅ Auto-transfer setup updated for goal:", goalId);
+    } catch (error) {
+      console.error("❌ Error setting up auto-transfer:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process automatic transfers for all eligible goals
+   */
+  static async processAutoTransfers(userId: string): Promise<void> {
+    try {
+      const activeGoals = await this.getActiveGoals(userId);
+      const now = new Date();
+
+      for (const goal of activeGoals) {
+        if (
+          goal.autoPayment?.enabled &&
+          goal.autoPayment.nextPaymentDate &&
+          goal.autoPayment.nextPaymentDate <= now &&
+          goal.autoPayment.fromAccountId &&
+          goal.autoPayment.amount &&
+          goal.autoPayment.amount > 0
+        ) {
+          try {
+            // Process the auto payment
+            await this.payTowardGoal(
+              userId,
+              goal.id,
+              goal.autoPayment.fromAccountId,
+              goal.autoPayment.amount,
+              `Auto-transfer to ${goal.name}`
+            );
+
+            // Calculate next payment date
+            const nextDate = new Date(goal.autoPayment.nextPaymentDate);
+            switch (goal.autoPayment.frequency) {
+              case "daily":
+                nextDate.setDate(nextDate.getDate() + 1);
+                break;
+              case "weekly":
+                nextDate.setDate(nextDate.getDate() + 7);
+                break;
+              case "biweekly":
+                nextDate.setDate(nextDate.getDate() + 14);
+                break;
+              case "monthly":
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                break;
+            }
+
+            // Update next payment date
+            await this.setupAutoTransfer(goal.id, {
+              ...goal.autoPayment,
+              nextPaymentDate: nextDate,
+            });
+
+            console.log(`✅ Auto-transfer processed for goal: ${goal.name}`);
+          } catch (error) {
+            console.error(
+              `❌ Error processing auto-transfer for goal ${goal.name}:`,
+              error
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error processing auto-transfers:", error);
       throw error;
     }
   }

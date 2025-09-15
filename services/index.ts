@@ -6,3 +6,6 @@ export { TransactionService } from "./TransactionService";
 
 // Auth service
 export { AuthService } from "./authService";
+
+// User profile service
+export { UserProfileService } from "./UserProfileService";
