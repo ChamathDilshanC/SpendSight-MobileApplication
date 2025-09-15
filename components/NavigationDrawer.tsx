@@ -132,9 +132,18 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           console.log(`📱 Navigating to help...`);
           NavigationManager.navigateToHelpSection();
           break;
+        case "transactions":
+          // Navigate to transaction management screen
+          console.log(`📱 Navigating to transactions...`);
+          NavigationManager.navigateToTransactionSection();
+          break;
+        case "history":
+          // Navigate to transaction history screen
+          console.log(`📱 Navigating to history...`);
+          NavigationManager.navigateToHistorySection();
+          break;
         case "analytics":
         case "budget":
-        case "transactions":
         case "notifications":
         case "settings":
           // For now, these will show a coming soon message
@@ -266,9 +275,9 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             />
 
             <DrawerItem
-              icon="analytics-outline"
-              title="Analytics"
-              onPress={() => navigateToScreen("analytics")}
+              icon="bar-chart-outline"
+              title="Transaction"
+              onPress={() => navigateToScreen("transactions")}
               isActive={false}
             />
 
@@ -282,7 +291,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             <DrawerItem
               icon="receipt-outline"
               title="Transaction History"
-              onPress={() => navigateToScreen("transactions")}
+              onPress={() => navigateToScreen("history")}
               isActive={false}
             />
 
