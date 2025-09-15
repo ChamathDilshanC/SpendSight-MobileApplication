@@ -1,0 +1,15 @@
+// TEMPORARY DEVELOPMENT RULES - NOT FOR PRODUCTION
+// Use this ONLY for testing, then switch to the secure rules in firestore.rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // WARNING: Allow read/write access to all documents for testing
+    // REPLACE WITH SECURE RULES BEFORE PRODUCTION!
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+// After testing works, replace with the secure rules from firestore.rules

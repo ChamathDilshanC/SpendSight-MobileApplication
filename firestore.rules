@@ -1,0 +1,95 @@
+// Firestore Security Rules for SpendSight
+// Copy this content to your Firebase Console -> Firestore Database -> Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only access their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can only access their own accounts
+    match /accounts/{accountId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Users can only access their own categories
+    match /categories/{categoryId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Users can only access their own transactions
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Users can only access their own goals
+    match /goals/{goalId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Users can only access their own budgets
+    match /budgets/{budgetId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Helper function to validate data structure
+    function isValidAccount(data) {
+      return data.keys().hasAll(['userId', 'name', 'type', 'balance', 'currency', 'isActive']) &&
+        data.userId is string &&
+        data.name is string &&
+        data.type in ['main', 'savings', 'expenses', 'custom'] &&
+        data.balance is number &&
+        data.currency is string &&
+        data.isActive is bool;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'amount', 'currency', 'description', 'date']) &&
+        data.userId is string &&
+        data.type in ['expense', 'income', 'transfer'] &&
+        data.amount is number &&
+        data.currency is string &&
+        data.description is string &&
+        data.date is timestamp;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['userId', 'name', 'type', 'icon', 'color', 'isDefault']) &&
+        data.userId is string &&
+        data.name is string &&
+        data.type in ['expense', 'income'] &&
+        data.icon is string &&
+        data.color is string &&
+        data.isDefault is bool;
+    }
+
+    function isValidGoal(data) {
+      return data.keys().hasAll(['userId', 'name', 'targetAmount', 'currentAmount', 'currency', 'targetDate', 'isCompleted']) &&
+        data.userId is string &&
+        data.name is string &&
+        data.targetAmount is number &&
+        data.currentAmount is number &&
+        data.currency is string &&
+        data.targetDate is timestamp &&
+        data.isCompleted is bool;
+    }
+  }
+}
