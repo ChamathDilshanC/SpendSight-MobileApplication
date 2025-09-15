@@ -24,6 +24,7 @@ export interface Category {
   color: string;
   budget?: number; // Monthly budget limit for this category
   isDefault: boolean; // System categories vs user-created
+  isActive?: boolean; // Whether the category is active (not deleted)
   createdAt: Date;
   updatedAt: Date;
   parentId?: string; // For subcategories
