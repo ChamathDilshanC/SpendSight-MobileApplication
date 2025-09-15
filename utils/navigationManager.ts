@@ -111,6 +111,61 @@ export class NavigationManager {
   }
 
   /**
+   * Navigate to GetStarted screen and replace splash screen
+   */
+  static navigateToGetStarted(): void {
+    this.safeNavigate("/(getStarted)/getStartedScreen", "replace");
+  }
+
+  /**
+   * Navigate to auth screens from GetStarted (replace to prevent back to GetStarted)
+   */
+  static navigateToSignupFromGetStarted(): void {
+    this.safeNavigate("/(auth)/signup", "replace");
+  }
+
+  static navigateToLoginFromGetStarted(): void {
+    this.safeNavigate("/(auth)/login", "replace");
+  }
+
+  /**
+   * Navigate between main app sections (replaces current screen to prevent stack buildup)
+   * This is specifically for drawer navigation between main sections
+   */
+  static navigateToMainSection(route: string): void {
+    console.log(`🏗️ Navigating to main section: ${route}`);
+    this.safeNavigate(route, "replace");
+  }
+
+  /**
+   * Navigate to dashboard and replace current route
+   */
+  static navigateToDashboardSection(): void {
+    this.navigateToMainSection("/(dashboard)/dashboard");
+  }
+
+  /**
+   * Navigate to accounts and replace current route
+   */
+  static navigateToAccountsSection(): void {
+    this.navigateToMainSection("/(account)/account");
+  }
+
+  /**
+   * Navigate to categories and replace current route
+   */
+  static navigateToCategoriesSection(): void {
+    this.navigateToMainSection("/(categories)/categories");
+  }
+
+  /**
+   * Navigate to help and replace current route
+   */
+  static navigateToHelpSection(): void {
+    this.navigateToMainSection("/(help)/help");
+  }
+
+  /**
    * Reset to a specific route and clear all history
    */
   static resetToRoute(route: string): void {
