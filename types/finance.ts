@@ -252,43 +252,6 @@ export const DefaultCategories: Omit<
   },
 ];
 
-// Default accounts for new users
-export const DefaultAccounts: Omit<
-  Account,
-  "id" | "userId" | "createdAt" | "updatedAt"
->[] = [
-  {
-    name: "Main Account",
-    type: "main",
-    balance: 0,
-    currency: "USD",
-    isActive: true,
-    description: "Primary account for daily transactions",
-    color: "#4ECDC4",
-    icon: "wallet",
-  },
-  {
-    name: "Savings Account",
-    type: "savings",
-    balance: 0,
-    currency: "USD",
-    isActive: true,
-    description: "Long-term savings and emergency fund",
-    color: "#45B7D1",
-    icon: "save",
-  },
-  {
-    name: "Expenses Account",
-    type: "expenses",
-    balance: 0,
-    currency: "USD",
-    isActive: true,
-    description: "Dedicated account for planned expenses",
-    color: "#96CEB4",
-    icon: "card",
-  },
-];
-
 // Transaction types for filtering and categorization
 export type TransactionType =
   | "expense"
