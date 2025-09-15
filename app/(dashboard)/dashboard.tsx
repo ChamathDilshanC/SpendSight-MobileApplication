@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import NavigationDrawer from "../../components/NavigationDrawer";
 import { useAuth } from "../../context/FirebaseAuthContext";
+import { useDisableBackButton } from "../../hooks/useBackButton";
 import { AccountService } from "../../services/AccountService";
 import { NavigationManager } from "../../utils/navigationManager";
 
@@ -27,6 +28,9 @@ const Dashboard = () => {
   const { authState, logout } = useAuth();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Disable hardware back button to prevent going back to auth screens
+  useDisableBackButton(true);
 
   // Use Reanimated shared values instead of Animated.Value - MUST be called before any returns
   const slideAnim = useSharedValue(-DRAWER_WIDTH);

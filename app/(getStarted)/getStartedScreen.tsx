@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { NavigationManager } from "../../utils/navigationManager";
 
 const BACKGROUND_IMAGE = require("../../assets/images/GetStartBG.png");
 
@@ -27,11 +28,13 @@ const GetStartedScreen = () => {
   }, []);
 
   const handleGetStarted = () => {
-    router.push("/(auth)/signup");
+    // Use replace to prevent back navigation to GetStarted screen
+    NavigationManager.navigateToSignupFromGetStarted();
   };
 
   const handleLogin = () => {
-    router.push("/(auth)/login");
+    // Use replace to prevent back navigation to GetStarted screen
+    NavigationManager.navigateToLoginFromGetStarted();
   };
 
   return (
