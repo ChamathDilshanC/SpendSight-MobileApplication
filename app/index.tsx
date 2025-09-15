@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import "../global.css";
+import { NavigationManager } from "../utils/navigationManager";
 
 const LOGO = require("../assets/images/SpendSightLogo.png");
 // Preload the GetStarted background image
@@ -60,7 +61,8 @@ export default function App() {
 
     // Add a slight delay to show the slide animation
     setTimeout(() => {
-      router.push("/(getStarted)/getStartedScreen");
+      // Use replace to prevent back navigation to splash screen
+      NavigationManager.navigateToGetStarted();
     }, 300);
   };
 

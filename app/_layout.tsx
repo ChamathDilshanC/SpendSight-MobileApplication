@@ -15,13 +15,16 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: "#ffffff" }, // Updated to white theme
-            animation: "none", // Disable default navigation animations
+            animation: "slide_from_right", // Smooth slide animation for main sections
           }}
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(getStarted)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
+          <Stack.Screen name="(account)" options={{ headerShown: false }} />
+          <Stack.Screen name="(categories)" options={{ headerShown: false }} />
+          <Stack.Screen name="(help)" options={{ headerShown: false }} />
         </Stack>
       </FinanceProvider>
     </AuthProvider>
