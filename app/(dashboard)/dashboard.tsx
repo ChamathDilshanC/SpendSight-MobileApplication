@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
+  ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -15,7 +17,10 @@ import {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AnimatedAccountCard } from "../../components/AnimatedAccountCard";
 import NavigationDrawer from "../../components/NavigationDrawer";
+import { NavigationShortcuts } from "../../components/NavigationShortcuts";
+import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { useDisableBackButton } from "../../hooks/useBackButton";
 import { AccountService } from "../../services/AccountService";
@@ -26,8 +31,10 @@ const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
 const Dashboard = () => {
   const { authState, logout } = useAuth();
+  const { accounts } = useFinance();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
 
   // Disable hardware back button to prevent going back to auth screens
   useDisableBackButton(true);
@@ -222,10 +229,19 @@ const Dashboard = () => {
     }, 300);
   };
 
+  const handleAccountSwipe = (newIndex: number) => {
+    setCurrentAccountIndex(newIndex);
+  };
+
+  const handleNavigationShortcut = (route: string) => {
+    console.log(`🚀 Dashboard: Navigating to ${route}`);
+    NavigationManager.navigateToMainSection(route);
+  };
+
   // Safety check to prevent rendering issues - AFTER all hooks
   if (!authState || !authState.user) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-gray-50">
         <View className="items-center justify-center flex-1">
           <Text className="text-lg text-gray-600">Loading...</Text>
         </View>
@@ -235,10 +251,10 @@ const Dashboard = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <SafeAreaView className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <SafeAreaView className="flex-1 bg-gray-50">
         {/* Header with hamburger menu */}
-        <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-200">
+        <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
           <TouchableOpacity
             className="p-3 rounded-lg min-w-[44px] min-h-[44px] justify-center items-center active:bg-gray-100"
             onPress={openDrawer}
@@ -247,48 +263,125 @@ const Dashboard = () => {
           >
             <Ionicons name="menu" size={28} color="#1f2937" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-gray-900">SpendSight</Text>
-          <View className="w-11" /> {/* Spacer for balance */}
+
+          <MotiView
+            from={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{
+              type: "spring",
+              damping: 15,
+              stiffness: 100,
+            }}
+          >
+            <Text className="text-xl font-bold text-gray-900">SpendSight</Text>
+          </MotiView>
+
+          <TouchableOpacity
+            className="p-3 rounded-lg min-w-[44px] min-h-[44px] justify-center items-center active:bg-gray-100"
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="log-out" size={24} color="#ef4444" />
+          </TouchableOpacity>
         </View>
 
         {/* Main content */}
-        <View className="items-center justify-center flex-1 p-5">
-          <Text className="mb-3 text-3xl font-bold text-gray-900">
-            Welcome to SpendSight
-          </Text>
-          <Text className="mb-1 text-lg text-gray-600">
-            Hello,{" "}
-            {authState?.user?.fullName &&
-            typeof authState.user.fullName === "string"
-              ? authState.user.fullName
-              : "User"}
-            !
-          </Text>
-          <Text className="mb-10 text-base text-gray-500">
-            {authState?.user?.email && typeof authState.user.email === "string"
-              ? authState.user.email
-              : "No email"}
-          </Text>
-
-          <TouchableOpacity
-            className="px-8 py-4 bg-red-500 rounded-xl active:bg-red-600"
-            onPress={handleLogout}
-            activeOpacity={0.8}
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        >
+          {/* Welcome Section */}
+          <MotiView
+            from={{ opacity: 0, translateY: -20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{
+              type: "timing",
+              duration: 600,
+              delay: 200,
+            }}
+            className="px-5 pt-6 pb-4"
           >
-            <Text className="text-base font-semibold text-white">Logout</Text>
-          </TouchableOpacity>
-
-          {/* Temporary test button for drawer */}
-          <TouchableOpacity
-            className="px-8 py-4 mt-5 bg-blue-500 rounded-xl active:bg-blue-600"
-            onPress={openDrawer}
-            activeOpacity={0.8}
-          >
-            <Text className="text-base font-semibold text-white">
-              Test Drawer (Debug)
+            <Text className="text-2xl font-bold text-gray-900">
+              Welcome back,
             </Text>
-          </TouchableOpacity>
-        </View>
+            <Text className="text-base text-gray-600">
+              {authState?.user?.fullName &&
+              typeof authState.user.fullName === "string"
+                ? authState.user.fullName
+                : authState?.user?.email?.split("@")[0] || "User"}
+            </Text>
+          </MotiView>
+
+          {/* Animated Account Cards */}
+          <MotiView
+            from={{ opacity: 0, translateY: 30 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{
+              type: "spring",
+              damping: 15,
+              stiffness: 80,
+              delay: 400,
+            }}
+            className="mb-4"
+          >
+            <AnimatedAccountCard
+              accounts={accounts}
+              currentIndex={currentAccountIndex}
+              onSwipe={handleAccountSwipe}
+            />
+          </MotiView>
+
+          {/* Navigation Shortcuts */}
+          <MotiView
+            from={{ opacity: 0, translateY: 40 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{
+              type: "spring",
+              damping: 15,
+              stiffness: 80,
+              delay: 600,
+            }}
+          >
+            <NavigationShortcuts onNavigate={handleNavigationShortcut} />
+          </MotiView>
+
+          {/* Recent Activity Section */}
+          <MotiView
+            from={{ opacity: 0, translateY: 50 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{
+              type: "spring",
+              damping: 15,
+              stiffness: 80,
+              delay: 800,
+            }}
+            className="px-5 mt-8"
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-semibold text-gray-900">
+                Recent Activity
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleNavigationShortcut("/(transaction)")}
+                activeOpacity={0.7}
+              >
+                <Text className="text-sm font-medium text-blue-600">
+                  View All
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </MotiView>
+
+          {/* Footer */}
+          <View className="items-center px-5 mt-8">
+            <Text className="text-xs text-gray-600">SpendSight v1.0</Text>
+            <Text className="mt-1 text-xs text-gray-600">
+              All rights reserved By Developer : Chamath Dilshan
+            </Text>
+          </View>
+        </ScrollView>
 
         {/* Navigation Drawer with error handling */}
         {isDrawerVisible && (

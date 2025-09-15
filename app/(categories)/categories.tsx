@@ -13,11 +13,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useAuth } from "../../context/FirebaseAuthContext";
+import { useTabBackButton } from "../../hooks/useBackButton";
 import { CategoryService } from "../../services/CategoryService";
 import { Category } from "../../types/finance";
 
 const Categories = () => {
   const { authState } = useAuth();
+
+  // Force enable back button hook for categories screen
+  useTabBackButton(true);
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
