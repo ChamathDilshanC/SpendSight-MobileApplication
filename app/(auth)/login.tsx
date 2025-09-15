@@ -1,6 +1,5 @@
-import { useRouter } from "expo-router";
 import { MotiView } from "moti";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -24,8 +23,40 @@ export default function LoginScreen() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const syncAutofillValues = () => {
+      console.log("� Checking for autofill sync...");
+    };
+
+    const interval = setInterval(syncAutofillValues, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleEmailFocus = () => {
+    console.log("📧 Email field focused");
+  };
+
+  const handlePasswordFocus = () => {
+    console.log("🔒 Password field focused");
+  };
+
+  const handleEmailChange = (text: string) => {
+    console.log("📧 Email changed manually:", text);
+    setFormData((prev) => ({ ...prev, email: text }));
+  };
+
+  const handlePasswordChange = (text: string) => {
+    console.log("🔒 Password changed manually");
+    setFormData((prev) => ({ ...prev, password: text }));
+  };
+
   const handleLogin = async () => {
-    // Prevent multiple rapid submissions
     if (isSubmitting || authState.isLoading) {
       console.log("🚫 Login already in progress, ignoring button press");
       return;
@@ -34,9 +65,20 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      const success = await login(formData);
+      let finalEmail = formData.email;
+      let finalPassword = formData.password;
+
+      console.log("🚀 Logging in with:", {
+        email: finalEmail,
+        hasPassword: !!finalPassword,
+      });
+
+      const success = await login({
+        email: finalEmail,
+        password: finalPassword,
+      });
+
       if (success) {
-        // Navigate to dashboard and clear auth history
         console.log("✅ Login successful, navigating to dashboard...");
         NavigationManager.navigateToDashboard();
       } else if (authState.error) {
@@ -44,8 +86,9 @@ export default function LoginScreen() {
           { text: "OK", onPress: clearError },
         ]);
       }
+    } catch (error) {
+      console.error("❌ Login error:", error);
     } finally {
-      // Add a small delay to prevent rapid re-submission
       setTimeout(() => {
         setIsSubmitting(false);
       }, 1000);
@@ -55,7 +98,6 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     const success = await signInWithGoogle();
     if (success) {
-      // Navigate to dashboard and clear auth history
       console.log("✅ Google sign-in successful, navigating to dashboard...");
       NavigationManager.navigateToDashboard();
     } else if (authState.error) {
@@ -68,7 +110,6 @@ export default function LoginScreen() {
   const handleAppleSignIn = async () => {
     const success = await signInWithApple();
     if (success) {
-      // Navigate to dashboard and clear auth history
       console.log("✅ Apple sign-in successful, navigating to dashboard...");
       NavigationManager.navigateToDashboard();
     } else if (authState.error) {
@@ -94,7 +135,6 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 px-6 pt-20">
-            {/* Header */}
             <MotiView
               from={{ opacity: 0, translateY: -20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -104,15 +144,14 @@ export default function LoginScreen() {
               }}
               className="mb-12"
             >
-              <Text className="text-3xl font-bold text-white mb-2">
+              <Text className="mb-2 text-3xl font-bold text-white">
                 Welcome Back
               </Text>
-              <Text className="text-gray-400 text-lg">
+              <Text className="text-lg text-gray-400">
                 Sign in to your SpendSight account
               </Text>
             </MotiView>
 
-            {/* Form */}
             <MotiView
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -122,33 +161,46 @@ export default function LoginScreen() {
               }}
               className="space-y-4"
             >
-              {/* Email */}
               <View className="mb-4">
-                <Text className="text-white mb-2 font-medium">Email</Text>
+                <Text className="mb-4 font-medium text-white">
+                  Email<Text className="text-red-500"> *</Text>
+                </Text>
                 <TextInput
+                  ref={emailRef}
                   value={formData.email}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, email: text })
-                  }
+                  onChangeText={handleEmailChange}
+                  onFocus={handleEmailFocus}
                   placeholder="Enter your email"
                   placeholderTextColor="#666"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  autoCorrect={false}
+                  // FIX 6: Add importantForAutofill to help password managers
+                  importantForAutofill="yes"
                   className="bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#0077CC]"
                 />
               </View>
 
               {/* Password */}
               <View className="mb-6">
-                <Text className="text-white mb-2 font-medium">Password</Text>
+                <Text className="mb-4 font-medium text-white">
+                  Password<Text className="text-red-500"> *</Text>
+                </Text>
                 <TextInput
+                  ref={passwordRef}
                   value={formData.password}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, password: text })
-                  }
+                  onChangeText={handlePasswordChange}
+                  onFocus={handlePasswordFocus}
                   placeholder="Enter your password"
                   placeholderTextColor="#666"
                   secureTextEntry
+                  autoComplete="current-password"
+                  textContentType="password"
+                  autoCorrect={false}
+                  // FIX 7: Add importantForAutofill for password field
+                  importantForAutofill="yes"
                   className="bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#0077CC]"
                 />
               </View>
@@ -171,7 +223,7 @@ export default function LoginScreen() {
                 activeOpacity={0.8}
                 disabled={authState.isLoading || isSubmitting}
               >
-                <Text className="text-white text-center font-bold text-lg">
+                <Text className="text-lg font-bold text-center text-white">
                   {authState.isLoading || isSubmitting
                     ? "Logging in..."
                     : "Login"}
@@ -182,23 +234,23 @@ export default function LoginScreen() {
               <View className="mb-6">
                 <View className="flex-row items-center mb-6">
                   <View className="flex-1 h-px bg-gray-600" />
-                  <Text className="text-gray-400 text-sm mx-4">
+                  <Text className="mx-4 text-sm text-gray-400">
                     Or continue with
                   </Text>
                   <View className="flex-1 h-px bg-gray-600" />
                 </View>
 
-                <View className="space-y-3 mb-6">
+                <View className="mb-6 space-y-3">
                   {/* Google Sign-In Button */}
                   <TouchableOpacity
-                    className="bg-white rounded-xl py-4 px-4 flex-row items-center justify-center shadow-md active:bg-gray-100 mb-3"
+                    className="flex-row items-center justify-center px-4 py-4 mb-3 bg-white shadow-md rounded-xl active:bg-gray-100"
                     onPress={handleGoogleSignIn}
                     disabled={authState.isLoading}
                   >
                     <View className="w-5 h-5 mr-3">
                       <Text className="text-md">🔍</Text>
                     </View>
-                    <Text className="text-gray-700 text-base font-medium">
+                    <Text className="text-base font-medium text-gray-700">
                       Continue with Google
                     </Text>
                   </TouchableOpacity>
@@ -206,14 +258,14 @@ export default function LoginScreen() {
                   {/* Apple Sign-In Button (iOS only) */}
                   {Platform.OS === "ios" && (
                     <TouchableOpacity
-                      className="bg-black border border-gray-700 rounded-xl py-4 px-4 flex-row items-center justify-center shadow-md active:bg-gray-900"
+                      className="flex-row items-center justify-center px-4 py-4 bg-black border border-gray-700 shadow-md rounded-xl active:bg-gray-900"
                       onPress={handleAppleSignIn}
                       disabled={authState.isLoading}
                     >
                       <View className="w-5 h-5 mr-3 ">
                         <Text className="text-md">🍎</Text>
                       </View>
-                      <Text className="text-white text-base font-medium">
+                      <Text className="text-base font-medium text-white">
                         Continue with Apple
                       </Text>
                     </TouchableOpacity>

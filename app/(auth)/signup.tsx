@@ -154,7 +154,7 @@ export default function SignupScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 px-6 py-12 justify-center">
+          <View className="justify-center flex-1 px-6 py-12">
             <MotiView
               from={{ opacity: 0, translateY: -20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -164,10 +164,10 @@ export default function SignupScreen() {
               }}
               className="mb-12"
             >
-              <Text className="text-3xl font-bold text-white mb-2">
+              <Text className="mb-2 text-3xl font-bold text-white">
                 Create Account
               </Text>
-              <Text className="text-gray-300 text-base">
+              <Text className="text-base text-gray-300">
                 Join SpendSight to start tracking your expenses
               </Text>
             </MotiView>
@@ -179,14 +179,14 @@ export default function SignupScreen() {
                 opacity: { type: "timing", duration: 600, delay: 200 },
                 translateY: { type: "timing", duration: 600, delay: 200 },
               }}
-              className="space-y-4 mb-6"
+              className="mb-6 space-y-4"
             >
               <View className="mb-4">
-                <Text className="text-gray-300 text-sm mb-2 ml-1">
+                <Text className="mb-2 ml-1 text-sm text-gray-300">
                   Full Name
                 </Text>
                 <TextInput
-                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base focus:border-blue-500"
+                  className="px-4 py-3 text-base text-white bg-gray-700 border border-gray-600 rounded-lg focus:border-blue-500"
                   placeholder="Enter your full name"
                   placeholderTextColor="#9CA3AF"
                   value={formData.fullName}
@@ -197,11 +197,11 @@ export default function SignupScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-gray-300 text-sm mb-2 ml-1">
+                <Text className="mb-2 ml-1 text-sm text-gray-300">
                   Email Address
                 </Text>
                 <TextInput
-                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base focus:border-blue-500"
+                  className="px-4 py-3 text-base text-white bg-gray-700 border border-gray-600 rounded-lg focus:border-blue-500"
                   placeholder="Enter your email"
                   placeholderTextColor="#9CA3AF"
                   value={formData.email}
@@ -214,11 +214,11 @@ export default function SignupScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-gray-300 text-sm mb-2 ml-1">
+                <Text className="mb-2 ml-1 text-sm text-gray-300">
                   Password
                 </Text>
                 <TextInput
-                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base focus:border-blue-500"
+                  className="px-4 py-3 text-base text-white bg-gray-700 border border-gray-600 rounded-lg focus:border-blue-500"
                   placeholder="Create a password"
                   placeholderTextColor="#9CA3AF"
                   value={formData.password}
@@ -230,11 +230,11 @@ export default function SignupScreen() {
               </View>
 
               <View className="mb-6">
-                <Text className="text-gray-300 text-sm mb-2 ml-1">
+                <Text className="mb-2 ml-1 text-sm text-gray-300">
                   Confirm Password
                 </Text>
                 <TextInput
-                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base focus:border-blue-500"
+                  className="px-4 py-3 text-base text-white bg-gray-700 border border-gray-600 rounded-lg focus:border-blue-500"
                   placeholder="Confirm your password"
                   placeholderTextColor="#9CA3AF"
                   value={formData.confirmPassword}
@@ -243,55 +243,6 @@ export default function SignupScreen() {
                   }
                   secureTextEntry
                 />
-              </View>
-            </MotiView>
-
-            {/* Social Sign-In Options */}
-            <MotiView
-              from={{ opacity: 0, translateY: 15 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{
-                opacity: { type: "timing", duration: 600, delay: 300 },
-                translateY: { type: "timing", duration: 600, delay: 300 },
-              }}
-              className="mb-6"
-            >
-              <View className="flex-row items-center mb-6">
-                <View className="flex-1 h-px bg-gray-600" />
-                <Text className="text-gray-400 text-sm mx-4">
-                  Or continue with
-                </Text>
-                <View className="flex-1 h-px bg-gray-600" />
-              </View>
-
-              <View className="space-y-3">
-                <TouchableOpacity
-                  className="bg-white rounded-lg py-3 px-4 flex-row items-center justify-center shadow-md active:bg-gray-100"
-                  onPress={handleGoogleSignUp}
-                  disabled={authState.isLoading}
-                >
-                  <View className="w-5 h-5 mr-3">
-                    <Text className="text-lg">🔍</Text>
-                  </View>
-                  <Text className="text-gray-700 text-base font-medium">
-                    Sign up with Google
-                  </Text>
-                </TouchableOpacity>
-
-                {Platform.OS === "ios" && (
-                  <TouchableOpacity
-                    className="bg-black border border-gray-700 rounded-lg py-3 px-4 flex-row items-center justify-center shadow-md active:bg-gray-900 mt-4"
-                    onPress={handleAppleSignUp}
-                    disabled={authState.isLoading}
-                  >
-                    <View className="w-5 h-5 mr-3">
-                      <Text className="text-lg">🍎</Text>
-                    </View>
-                    <Text className="text-white text-base font-medium">
-                      Sign up with Apple
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </View>
             </MotiView>
 
@@ -312,22 +263,71 @@ export default function SignupScreen() {
                 onPress={handleSignup}
                 disabled={isLoading || authState.isLoading}
               >
-                <Text className="text-white text-center text-base font-semibold">
+                <Text className="text-base font-semibold text-center text-white">
                   {isLoading || authState.isLoading
                     ? "Creating Account..."
                     : "Create Account"}
                 </Text>
               </TouchableOpacity>
 
-              <View className="flex-row justify-center">
-                <Text className="text-gray-400 text-sm">
+              <View className="flex-row justify-center mt-3">
+                <Text className="text-sm text-gray-400">
                   Already have an account?{" "}
                 </Text>
                 <TouchableOpacity onPress={goToLogin}>
-                  <Text className="text-blue-400 text-sm font-medium">
+                  <Text className="text-sm font-medium text-blue-400">
                     Sign In
                   </Text>
                 </TouchableOpacity>
+              </View>
+            </MotiView>
+
+            {/* Social Sign-In Options */}
+            <MotiView
+              from={{ opacity: 0, translateY: 15 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{
+                opacity: { type: "timing", duration: 600, delay: 300 },
+                translateY: { type: "timing", duration: 600, delay: 300 },
+              }}
+              className="mt-5 mb-3"
+            >
+              <View className="flex-row items-center mb-6">
+                <View className="flex-1 h-px bg-gray-600" />
+                <Text className="mx-4 text-sm text-gray-400">
+                  Or continue with
+                </Text>
+                <View className="flex-1 h-px bg-gray-600" />
+              </View>
+
+              <View className="space-y-3">
+                <TouchableOpacity
+                  className="flex-row items-center justify-center px-4 py-3 bg-white rounded-lg shadow-md active:bg-gray-100"
+                  onPress={handleGoogleSignUp}
+                  disabled={authState.isLoading}
+                >
+                  <View className="w-5 h-5 mr-3">
+                    <Text className="text-lg">🔍</Text>
+                  </View>
+                  <Text className="text-base font-medium text-gray-700">
+                    Sign up with Google
+                  </Text>
+                </TouchableOpacity>
+
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    className="flex-row items-center justify-center px-4 py-3 mt-4 bg-black border border-gray-700 rounded-lg shadow-md active:bg-gray-900"
+                    onPress={handleAppleSignUp}
+                    disabled={authState.isLoading}
+                  >
+                    <View className="w-5 h-5 mr-3">
+                      <Text className="text-lg">🍎</Text>
+                    </View>
+                    <Text className="text-base font-medium text-white">
+                      Sign up with Apple
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </MotiView>
           </View>
