@@ -148,10 +148,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let isInitializing = true;
+    let initTimeout: ReturnType<typeof setTimeout>;
 
     const initializeAuth = async () => {
       try {
         console.log("🔄 Initializing authentication...");
+
+        // Set a timeout to prevent infinite loading
+        initTimeout = setTimeout(() => {
+          if (isInitializing) {
+            console.log(
+              "⚠️ Auth initialization timeout, setting to not loading"
+            );
+            isInitializing = false;
+            dispatch({ type: "LOGOUT" });
+          }
+        }, 10000); // 10 second timeout
 
         // First, check if we have a valid stored session
         const validSession = await SessionManager.getValidSession();
@@ -170,6 +182,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 if (isInitializing) {
                   console.log("✅ User restored from session");
                   isInitializing = false;
+                  clearTimeout(initTimeout);
                 }
               } catch (error) {
                 console.error("Error converting Firebase user:", error);
@@ -179,15 +192,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                   type: "SET_ERROR",
                   payload: "Failed to load user data",
                 });
+                if (isInitializing) {
+                  isInitializing = false;
+                  clearTimeout(initTimeout);
+                }
               }
-            } else if (!firebaseUser && isInitializing) {
+            } else if (!firebaseUser) {
               // Firebase user not found but session exists - session is invalid
               console.log(
                 "⚠️ Session exists but Firebase user not found, clearing session"
               );
               await SessionManager.clearSession();
               dispatch({ type: "LOGOUT" });
-              isInitializing = false;
+              if (isInitializing) {
+                isInitializing = false;
+                clearTimeout(initTimeout);
+              }
             }
           });
         } else {
@@ -209,6 +229,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 if (isInitializing) {
                   console.log("✅ User authenticated from fresh login");
                   isInitializing = false;
+                  clearTimeout(initTimeout);
                 }
               } catch (error) {
                 console.error("Error converting Firebase user:", error);
@@ -216,10 +237,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                   type: "SET_ERROR",
                   payload: "Failed to load user data",
                 });
+                if (isInitializing) {
+                  isInitializing = false;
+                  clearTimeout(initTimeout);
+                }
               }
-            } else if (isInitializing) {
+            } else {
               dispatch({ type: "LOGOUT" });
-              isInitializing = false;
+              if (isInitializing) {
+                isInitializing = false;
+                clearTimeout(initTimeout);
+              }
             }
           });
         }
@@ -227,6 +255,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         console.error("Error initializing auth:", error);
         dispatch({ type: "LOGOUT" });
         isInitializing = false;
+        clearTimeout(initTimeout);
       }
     };
 
@@ -235,6 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Cleanup function
     return () => {
       isInitializing = false;
+      clearTimeout(initTimeout);
       if (unsubscribe) {
         unsubscribe();
       }
@@ -278,12 +308,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         return false;
       }
 
+      console.log("🔄 Creating new user account...");
+
       // Create user with Firebase
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+
+      console.log("✅ Firebase user created, updating profile...");
 
       // Update display name
       await updateProfile(userCredential.user, {
@@ -305,7 +339,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         },
       };
 
+      console.log("💾 Saving user to Firestore...");
       await saveUserToFirestore(newUser);
+
+      // Save session for new user
+      await SessionManager.saveSession(
+        userCredential.user.uid,
+        userCredential.user.email || ""
+      );
+
+      console.log("✅ New user registration completed successfully");
+
+      // The onAuthStateChanged listener will handle the state update
+      // Don't manually dispatch here to avoid race conditions
 
       return true;
     } catch (error: any) {

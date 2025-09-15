@@ -108,18 +108,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Initialize data when user is authenticated
   useEffect(() => {
-    if (authState.isAuthenticated && authState.user?.id) {
+    // Only initialize if user is authenticated AND auth is not loading
+    if (
+      authState.isAuthenticated &&
+      authState.user?.id &&
+      !authState.isLoading
+    ) {
+      console.log(
+        "🚀 FinanceContext: Auth state ready, initializing finance data..."
+      );
       initializeFinanceData();
-    } else {
-      // Clear data when user logs out
+    } else if (!authState.isAuthenticated && !authState.isLoading) {
+      // Clear data when user logs out (and auth is not loading)
+      console.log("🔄 FinanceContext: User logged out, clearing data...");
       setAccounts([]);
       setTransactions([]);
       setCategories([]);
       setGoals([]);
+      setIsLoading(false); // Ensure finance context isn't loading
 
       // Cleanup listeners
       if (unsubscribeAccounts) unsubscribeAccounts();
       if (unsubscribeTransactions) unsubscribeTransactions();
+    } else if (authState.isLoading) {
+      console.log("⏳ FinanceContext: Auth state still loading, waiting...");
     }
 
     return () => {
@@ -127,7 +139,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (unsubscribeAccounts) unsubscribeAccounts();
       if (unsubscribeTransactions) unsubscribeTransactions();
     };
-  }, [authState.isAuthenticated, authState.user?.id]);
+  }, [authState.isAuthenticated, authState.user?.id, authState.isLoading]); // Add isLoading dependency
 
   const initializeFinanceData = async () => {
     if (!authState.user?.id) return;
@@ -141,6 +153,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setIsLoading(true);
     setError(null);
+
+    // Add timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      console.log("⏰ Loading timeout reached, setting loading to false");
+      setIsLoading(false);
+    }, 15000); // 15 second timeout
 
     try {
       const userId = authState.user.id;
@@ -167,7 +185,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (existingAccounts.length === 0) {
         console.log("🔧 Initializing default finance data for new user...");
         await Promise.all([
-          AccountService.initializeDefaultAccounts(userId),
           CategoryService.initializeDefaultCategories(userId),
         ]);
       }
@@ -201,11 +218,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       setUnsubscribeTransactions(() => unsubTransactions);
 
       console.log("✅ Finance data initialized successfully");
+      clearTimeout(loadingTimeout); // Clear timeout on success
     } catch (err) {
       console.error("❌ Error initializing finance data:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load finance data"
       );
+      clearTimeout(loadingTimeout); // Clear timeout on error
     } finally {
       setIsLoading(false);
     }
