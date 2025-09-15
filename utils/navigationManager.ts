@@ -9,7 +9,8 @@ export class NavigationManager {
    * This prevents users from going back to login/signup screens
    */
   static navigateToDashboard(): void {
-    this.safeNavigate("/(dashboard)/dashboard", "replace");
+    console.log("🏠 Navigating to dashboard...");
+    this.navigateToMainSection("/(dashboard)/dashboard");
   }
 
   /**
@@ -177,6 +178,20 @@ export class NavigationManager {
    */
   static navigateToHistorySection(): void {
     this.navigateToMainSection("/(history)");
+  }
+
+  /**
+   * Navigate to goals management and replace current route
+   */
+  static navigateToGoalsSection(): void {
+    this.navigateToMainSection("/(goal)");
+  }
+
+  /**
+   * Navigate to settings and replace current route
+   */
+  static navigateToSettingsSection(): void {
+    this.navigateToMainSection("/(settings)");
   }
 
   /**
