@@ -1,7 +1,9 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -27,6 +29,7 @@ export class CategoryService {
           ...categoryData,
           id: categoryRef.id,
           userId,
+          isActive: true, // Ensure default categories are active
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -47,7 +50,7 @@ export class CategoryService {
     try {
       console.log("🔍 Fetching categories for user:", userId);
 
-      // Simplified query to avoid composite index requirement
+      // Query for user categories (filter active in memory to avoid index requirement)
       const q = query(
         collection(db, "categories"),
         where("userId", "==", userId)
@@ -56,7 +59,7 @@ export class CategoryService {
       const querySnapshot = await getDocs(q);
       console.log("✅ Found", querySnapshot.docs.length, "categories");
 
-      // Sort in memory to avoid index requirement
+      // Sort in memory and filter active categories
       const categories = querySnapshot.docs
         .map(
           (doc) =>
@@ -67,6 +70,7 @@ export class CategoryService {
               updatedAt: doc.data().updatedAt?.toDate() || new Date(),
             }) as Category
         )
+        .filter((category) => category.isActive !== false) // Only active categories
         .sort((a, b) => {
           // First sort by isDefault (default categories first)
           if (a.isDefault && !b.isDefault) return -1;
@@ -99,6 +103,7 @@ export class CategoryService {
       const docRef = await addDoc(collection(db, "categories"), {
         ...categoryData,
         userId,
+        isActive: true, // New categories are active by default
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -136,12 +141,25 @@ export class CategoryService {
 
   /**
    * Delete a category (only custom categories can be deleted)
+   * This method deactivates the category instead of permanently deleting it
+   * to maintain referential integrity with existing transactions
    */
   static async deleteCategory(categoryId: string): Promise<void> {
     try {
       const categoryRef = doc(db, "categories", categoryId);
-      // Note: In a real implementation, you might want to check if the category
-      // is being used in any transactions before deleting
+
+      // First check if the category exists and is not a default category
+      const categorySnap = await getDoc(categoryRef);
+      if (!categorySnap.exists()) {
+        throw new Error("Category not found");
+      }
+
+      const categoryData = categorySnap.data() as Category;
+      if (categoryData.isDefault) {
+        throw new Error("Cannot delete default categories");
+      }
+
+      // Deactivate the category instead of deleting to maintain transaction history
       await updateDoc(categoryRef, {
         isActive: false,
         updatedAt: serverTimestamp(),
@@ -150,6 +168,33 @@ export class CategoryService {
       console.log("✅ Category deactivated:", categoryId);
     } catch (error) {
       console.error("❌ Error deactivating category:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Permanently delete a category (use with caution)
+   * This method actually removes the document from Firestore
+   */
+  static async permanentlyDeleteCategory(categoryId: string): Promise<void> {
+    try {
+      const categoryRef = doc(db, "categories", categoryId);
+
+      // Check if category exists and is not default
+      const categorySnap = await getDoc(categoryRef);
+      if (!categorySnap.exists()) {
+        throw new Error("Category not found");
+      }
+
+      const categoryData = categorySnap.data() as Category;
+      if (categoryData.isDefault) {
+        throw new Error("Cannot delete default categories");
+      }
+
+      await deleteDoc(categoryRef);
+      console.log("✅ Category permanently deleted:", categoryId);
+    } catch (error) {
+      console.error("❌ Error permanently deleting category:", error);
       throw error;
     }
   }

@@ -122,13 +122,21 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           console.log(`📱 Navigating to accounts...`);
           NavigationManager.safeNavigate("/(account)/account", "push");
           break;
+        case "categories":
+          // Navigate to categories screen
+          console.log(`📱 Navigating to categories...`);
+          NavigationManager.safeNavigate("/(categories)/categories", "push");
+          break;
+        case "help":
+          // Navigate to help & support screen
+          console.log(`📱 Navigating to help...`);
+          NavigationManager.safeNavigate("/(help)/help", "push");
+          break;
         case "analytics":
         case "budget":
         case "transactions":
-        case "categories":
         case "notifications":
         case "settings":
-        case "help":
           // For now, these will show a coming soon message
           console.log(`Navigate to ${screen} - Feature coming soon!`);
           Alert.alert(
