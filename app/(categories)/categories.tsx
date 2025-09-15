@@ -5,13 +5,13 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
-  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { CategoryService } from "../../services/CategoryService";
 import { Category } from "../../types/finance";
@@ -337,7 +337,7 @@ const Categories = () => {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
-        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+        <AppHeader title="Categories" />
         <View className="items-center justify-center flex-1">
           <Text className="text-lg text-gray-600">Loading categories...</Text>
         </View>
@@ -350,9 +350,9 @@ const Categories = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <AppHeader title="Categories" />
 
-      {/* Header with Search */}
+      {/* Search and Filter Section */}
       <View className="pb-4 bg-white border-b border-gray-200">
         <View className="px-4 pt-4">
           {/* Search Bar */}
