@@ -33,7 +33,7 @@ export interface Category {
 export interface Transaction {
   id: string;
   userId: string;
-  type: "expense" | "income" | "transfer";
+  type: "expense" | "income" | "transfer" | "goal_payment";
   amount: number;
   currency: string;
   description: string;
@@ -83,7 +83,7 @@ export interface Goal {
     enabled: boolean;
     fromAccountId?: string;
     amount?: number; // Fixed amount or percentage
-    frequency?: "weekly" | "monthly";
+    frequency?: "daily" | "weekly" | "biweekly" | "monthly";
     nextPaymentDate?: Date;
   };
 

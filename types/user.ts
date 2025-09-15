@@ -2,7 +2,8 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  profilePicture?: string;
+  profileImage?: string;
+  profilePicture?: string; // Keep for backward compatibility
   dateJoined: Date;
   isActive: boolean;
   authProvider?: "email" | "google" | "apple";
