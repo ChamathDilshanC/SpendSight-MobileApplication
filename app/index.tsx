@@ -207,7 +207,7 @@ export default function App() {
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
                   >
-                    <Text className="text-gray-300 text-sm text-center">
+                    <Text className="text-sm text-center text-gray-300">
                       <Text className="text-[#0077CC]">Tap</Text> the logo to
                       get started
                     </Text>
@@ -222,7 +222,7 @@ export default function App() {
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
                   >
-                    <Text className="text-red-400 text-sm text-center max-w-64">
+                    <Text className="text-sm text-center text-red-400 max-w-64">
                       Please check your internet connection to continue
                     </Text>
                   </MotiView>
@@ -236,7 +236,7 @@ export default function App() {
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
                   >
-                    <Text className="text-gray-400 text-sm text-center max-w-64">
+                    <Text className="text-sm text-center text-gray-400 max-w-64">
                       Preparing your experience...
                     </Text>
                   </MotiView>
@@ -244,9 +244,9 @@ export default function App() {
               </MotiView>
             </MotiView>
           </MotiView>
-          <View className="absolute bottom-20 items-center">
-            <Text className="text-gray-600 text-xs">SpendSight v1.0</Text>
-            <Text className="text-gray-600 text-xs mt-1">
+          <View className="absolute items-center bottom-20">
+            <Text className="text-xs text-gray-600">SpendSight v1.0</Text>
+            <Text className="mt-1 text-xs text-gray-600">
               All rights reserved By Developer : Chamath Dilshan
             </Text>
           </View>
@@ -254,7 +254,7 @@ export default function App() {
           {/* Hidden image for preloading */}
           <Image
             source={GET_STARTED_BG}
-            className="w-0 h-0 opacity-0 absolute"
+            className="absolute w-0 h-0 opacity-0"
             onLoad={() => setImagesLoaded(true)}
             onError={() => setImagesLoaded(true)}
           />
