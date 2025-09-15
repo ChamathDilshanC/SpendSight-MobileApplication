@@ -30,9 +30,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     useFinance();
 
   // Form state
-  const [type, setType] = useState<"expense" | "income" | "transfer">(
-    transaction?.type || "expense"
-  );
+  const [type, setType] = useState<
+    "expense" | "income" | "transfer" | "goal_payment"
+  >(transaction?.type || "expense");
   const [amount, setAmount] = useState(transaction?.amount?.toString() || "");
   const [description, setDescription] = useState(
     transaction?.description || ""
@@ -64,7 +64,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setAvailableCategories(getIncomeCategories());
     } else {
       setAvailableCategories([]);
-      setSelectedCategory(""); // Clear category for transfers
+      setSelectedCategory(""); // Clear category for transfers and goal payments
     }
   }, [type, categories]);
 
@@ -118,6 +118,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         );
         return false;
       }
+    } else if (type === "goal_payment") {
+      // Goal payments can be deposits (fromAccount) or withdrawals (toAccount)
+      if (!fromAccount && !toAccount) {
+        Alert.alert("Error", "Please select an account");
+        return false;
+      }
     }
 
     return true;
@@ -142,15 +148,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       };
 
       // Only add fields that have values to avoid undefined values in Firebase
-      if (type !== "transfer" && selectedCategory) {
+      if (type !== "transfer" && type !== "goal_payment" && selectedCategory) {
         transactionData.categoryId = selectedCategory;
       }
 
-      if ((type === "expense" || type === "transfer") && fromAccount) {
+      if (
+        (type === "expense" ||
+          type === "transfer" ||
+          (type === "goal_payment" && fromAccount)) &&
+        fromAccount
+      ) {
         transactionData.fromAccountId = fromAccount;
       }
 
-      if ((type === "income" || type === "transfer") && toAccount) {
+      if (
+        (type === "income" ||
+          type === "transfer" ||
+          (type === "goal_payment" && toAccount)) &&
+        toAccount
+      ) {
         transactionData.toAccountId = toAccount;
       }
 
@@ -190,24 +206,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
         {/* Transaction Type Selector */}
         <View className="mb-6">
-          <Text className="text-base font-semibold text-gray-800 mb-2">
+          <Text className="mb-2 text-base font-semibold text-gray-800">
             Transaction Type
           </Text>
-          <View className="bg-white rounded-xl p-1 shadow-sm">
+          <View className="p-1 bg-white shadow-sm rounded-xl">
             <View className="flex-row justify-between">
               <TouchableOpacity
-                className={`flex-1 flex-row items-center justify-center py-3 px-2 rounded-lg ${
+                className={`flex-1 flex-row items-center justify-center py-3 px-1 rounded-lg ${
                   type === "expense" ? "bg-blue-600" : ""
                 }`}
                 onPress={() => setType("expense")}
               >
                 <Ionicons
                   name="trending-down"
-                  size={20}
+                  size={18}
                   color={type === "expense" ? "#fff" : "#ef4444"}
                 />
                 <Text
-                  className={`ml-1.5 text-sm font-medium ${
+                  className={`ml-1 text-xs font-medium ${
                     type === "expense" ? "text-white" : "text-gray-500"
                   }`}
                 >
@@ -216,18 +232,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                className={`flex-1 flex-row items-center justify-center py-3 px-2 rounded-lg ${
+                className={`flex-1 flex-row items-center justify-center py-3 px-1 rounded-lg ${
                   type === "income" ? "bg-blue-600" : ""
                 }`}
                 onPress={() => setType("income")}
               >
                 <Ionicons
                   name="trending-up"
-                  size={20}
+                  size={18}
                   color={type === "income" ? "#fff" : "#10b981"}
                 />
                 <Text
-                  className={`ml-1.5 text-sm font-medium ${
+                  className={`ml-1 text-xs font-medium ${
                     type === "income" ? "text-white" : "text-gray-500"
                   }`}
                 >
@@ -236,22 +252,42 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                className={`flex-1 flex-row items-center justify-center py-3 px-2 rounded-lg ${
+                className={`flex-1 flex-row items-center justify-center py-3 px-1 rounded-lg ${
                   type === "transfer" ? "bg-blue-600" : ""
                 }`}
                 onPress={() => setType("transfer")}
               >
                 <Ionicons
                   name="swap-horizontal"
-                  size={20}
+                  size={18}
                   color={type === "transfer" ? "#fff" : "#3b82f6"}
                 />
                 <Text
-                  className={`ml-1.5 text-sm font-medium ${
+                  className={`ml-1 text-xs font-medium ${
                     type === "transfer" ? "text-white" : "text-gray-500"
                   }`}
                 >
                   Transfer
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`flex-1 flex-row items-center justify-center py-3 px-1 rounded-lg ${
+                  type === "goal_payment" ? "bg-blue-600" : ""
+                }`}
+                onPress={() => setType("goal_payment")}
+              >
+                <Ionicons
+                  name="flag"
+                  size={18}
+                  color={type === "goal_payment" ? "#fff" : "#8b5cf6"}
+                />
+                <Text
+                  className={`ml-1 text-xs font-medium ${
+                    type === "goal_payment" ? "text-white" : "text-gray-500"
+                  }`}
+                >
+                  Goal
                 </Text>
               </TouchableOpacity>
             </View>
@@ -260,13 +296,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {/* Amount Input */}
         <View className="mb-6">
-          <Text className="text-base font-semibold text-gray-800 mb-2">
+          <Text className="mb-2 text-base font-semibold text-gray-800">
             Amount
           </Text>
-          <View className="bg-white rounded-xl px-4 shadow-sm flex-row items-center">
-            <Text className="text-2xl font-semibold text-blue-600 mr-2">$</Text>
+          <View className="flex-row items-center px-4 bg-white shadow-sm rounded-xl">
+            <Text className="mr-2 text-2xl font-semibold text-blue-600">$</Text>
             <TextInput
-              className="flex-1 text-2xl font-semibold text-gray-800 py-4"
+              className="flex-1 py-4 text-2xl font-semibold text-gray-800"
               value={amount}
               onChangeText={(text) => setAmount(formatCurrency(text))}
               keyboardType="decimal-pad"
@@ -278,11 +314,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {/* Description Input */}
         <View className="mb-6">
-          <Text className="text-base font-semibold text-gray-800 mb-2">
+          <Text className="mb-2 text-base font-semibold text-gray-800">
             Description
           </Text>
           <TextInput
-            className="bg-white rounded-xl px-4 py-3 text-base text-gray-800 shadow-sm"
+            className="px-4 py-3 text-base text-gray-800 bg-white shadow-sm rounded-xl"
             value={description}
             onChangeText={setDescription}
             placeholder="Enter description"
@@ -293,14 +329,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           />
         </View>
 
-        {/* Category Picker (for income/expense) */}
-        {type !== "transfer" && (
+        {/* Category Picker (for income/expense only) */}
+        {type !== "transfer" && type !== "goal_payment" && (
           <View className="mb-6">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
+            <Text className="mb-2 text-base font-semibold text-gray-800">
               Category
             </Text>
-            <View className="bg-white rounded-xl shadow-sm max-h-48">
-              <Text className="text-base text-gray-800 px-4 py-3 border-b border-gray-200">
+            <View className="bg-white shadow-sm rounded-xl max-h-48">
+              <Text className="px-4 py-3 text-base text-gray-800 border-b border-gray-200">
                 {selectedCategory
                   ? getCategoryName(selectedCategory)
                   : "Select Category"}
@@ -335,13 +371,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         )}
 
         {/* Account Selectors */}
-        {(type === "expense" || type === "transfer") && (
+        {(type === "expense" ||
+          type === "transfer" ||
+          type === "goal_payment") && (
           <View className="mb-6">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
-              {type === "transfer" ? "From Account" : "Account"}
+            <Text className="mb-2 text-base font-semibold text-gray-800">
+              {type === "transfer"
+                ? "From Account"
+                : type === "goal_payment"
+                  ? "Account (From)"
+                  : "Account"}
             </Text>
-            <View className="bg-white rounded-xl shadow-sm max-h-48">
-              <Text className="text-base text-gray-800 px-4 py-3 border-b border-gray-200">
+            <View className="bg-white shadow-sm rounded-xl max-h-48">
+              <Text className="px-4 py-3 text-base text-gray-800 border-b border-gray-200">
                 {fromAccount ? getAccountName(fromAccount) : "Select Account"}
               </Text>
               <ScrollView
@@ -373,13 +415,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         )}
 
-        {(type === "income" || type === "transfer") && (
+        {(type === "income" ||
+          type === "transfer" ||
+          type === "goal_payment") && (
           <View className="mb-6">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
-              {type === "transfer" ? "To Account" : "Account"}
+            <Text className="mb-2 text-base font-semibold text-gray-800">
+              {type === "transfer"
+                ? "To Account"
+                : type === "goal_payment"
+                  ? "Account (To)"
+                  : "Account"}
             </Text>
-            <View className="bg-white rounded-xl shadow-sm max-h-48">
-              <Text className="text-base text-gray-800 px-4 py-3 border-b border-gray-200">
+            <View className="bg-white shadow-sm rounded-xl max-h-48">
+              <Text className="px-4 py-3 text-base text-gray-800 border-b border-gray-200">
                 {toAccount ? getAccountName(toAccount) : "Select Account"}
               </Text>
               <ScrollView
@@ -413,11 +461,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {/* Date Picker */}
         <View className="mb-6">
-          <Text className="text-base font-semibold text-gray-800 mb-2">
+          <Text className="mb-2 text-base font-semibold text-gray-800">
             Date
           </Text>
           <TouchableOpacity
-            className="bg-white rounded-xl px-4 py-3 shadow-sm flex-row items-center"
+            className="flex-row items-center px-4 py-3 bg-white shadow-sm rounded-xl"
             onPress={() => setShowDatePicker(true)}
           >
             <Ionicons name="calendar" size={20} color="#3b82f6" />
@@ -429,11 +477,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {/* Tags Input */}
         <View className="mb-6">
-          <Text className="text-base font-semibold text-gray-800 mb-2">
+          <Text className="mb-2 text-base font-semibold text-gray-800">
             Tags (optional)
           </Text>
           <TextInput
-            className="bg-white rounded-xl px-4 py-3 text-base text-gray-800 shadow-sm"
+            className="px-4 py-3 text-base text-gray-800 bg-white shadow-sm rounded-xl"
             value={tags}
             onChangeText={setTags}
             placeholder="Enter tags separated by commas"
@@ -444,10 +492,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {/* Recurring Toggle */}
         <View className="mb-6">
           <TouchableOpacity
-            className="bg-white rounded-xl px-4 py-4 shadow-sm"
+            className="px-4 py-4 bg-white shadow-sm rounded-xl"
             onPress={() => setIsRecurring(!isRecurring)}
           >
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center justify-between">
               <Text className="text-base font-semibold text-gray-800">
                 Recurring Transaction
               </Text>
@@ -469,7 +517,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {/* Action Buttons */}
         <View className="flex-row justify-between mt-8 mb-4">
           <TouchableOpacity
-            className="flex-1 mr-2 py-4 rounded-xl bg-gray-100 items-center"
+            className="items-center flex-1 py-4 mr-2 bg-gray-100 rounded-xl"
             onPress={onCancel}
             disabled={isLoading}
           >
