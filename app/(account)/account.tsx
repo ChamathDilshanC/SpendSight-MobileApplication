@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { AccountService } from "../../services/AccountService";
 import { Account } from "../../types/finance";
@@ -417,6 +418,7 @@ const AccountScreen = () => {
   if (!authState?.user) {
     return (
       <SafeAreaView className="flex-1 bg-white">
+        <AppHeader title="My Accounts" />
         <View className="items-center justify-center flex-1">
           <Text className="text-gray-600">Please log in to view accounts</Text>
         </View>
@@ -426,6 +428,8 @@ const AccountScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
+      <AppHeader title="My Accounts" />
+
       {/* Background Blur Effect - Subtle */}
       <View
         pointerEvents="none"

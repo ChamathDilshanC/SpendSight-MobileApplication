@@ -4,22 +4,14 @@ export default function AccountLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: {
-          backgroundColor: "#ffffff",
-        },
-        headerTintColor: "#1f2937",
-        headerTitleStyle: {
-          fontWeight: "bold",
-        },
-        headerShadowVisible: true,
-        headerBackVisible: true,
+        headerShown: false,
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen
         name="account"
         options={{
-          title: "Account Management",
-          headerBackTitle: "Back",
+          headerShown: false,
         }}
       />
     </Stack>
