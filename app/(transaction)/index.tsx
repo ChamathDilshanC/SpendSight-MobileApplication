@@ -13,12 +13,16 @@ import { TransactionDetails } from "../../components/TransactionDetails";
 import { TransactionForm } from "../../components/TransactionForm";
 import { TransactionList } from "../../components/TransactionList";
 import { useFinance } from "../../context/FinanceContext";
+import { useTabBackButton } from "../../hooks/useBackButton";
 import { Transaction } from "../../types/finance";
 
 type ViewMode = "list" | "add" | "edit" | "details";
 
 export default function TransactionsScreen() {
   const { createTransaction, transactions, refreshData } = useFinance();
+
+  // Force enable back button hook for transaction screen
+  useTabBackButton(true);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedTransaction, setSelectedTransaction] =
@@ -140,11 +144,7 @@ export default function TransactionsScreen() {
       case "details":
         return null;
       default:
-        return (
-          <AppHeader
-            title="Transactions"
-          />
-        );
+        return <AppHeader title="Transactions" />;
     }
   };
 
