@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Image,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -12,7 +13,9 @@ import {
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/FirebaseAuthContext";
+import { UserProfileService } from "../services/UserProfileService";
 import { NavigationManager } from "../utils/navigationManager";
+import { ProfileImagePicker } from "./ProfileImagePicker";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -88,6 +91,34 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 }) => {
   const { authState, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  // Load user's profile image on component mount
+  useEffect(() => {
+    const loadProfileImage = async () => {
+      if (authState?.user?.id) {
+        try {
+          // First check if user already has profileImage in authState
+          const existingImage =
+            authState.user.profileImage || authState.user.profilePicture;
+          if (existingImage) {
+            setProfileImage(existingImage);
+            return;
+          }
+
+          // If not, fetch from Firestore
+          const imageUrl = await UserProfileService.getUserProfileImage(
+            authState.user.id
+          );
+          setProfileImage(imageUrl);
+        } catch (error) {
+          console.error("❌ Failed to load profile image:", error);
+        }
+      }
+    };
+
+    loadProfileImage();
+  }, [authState?.user?.id, authState?.user?.profileImage]);
 
   // Add debugging for drawer visibility
   console.log("🎭 NavigationDrawer render - isVisible:", isVisible);
@@ -102,6 +133,19 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     onClose();
     await logout();
     NavigationManager.navigateToAuth();
+  };
+
+  const handleProfileImageUpload = (imageUrl: string) => {
+    console.log("✅ Profile image uploaded successfully:", imageUrl);
+    setProfileImage(imageUrl);
+
+    // Optionally update the authState context if needed
+    // This would require adding a method to update user profile in AuthContext
+  };
+
+  const handleProfileImageError = (error: string) => {
+    console.error("❌ Profile image upload error:", error);
+    Alert.alert("Upload Error", error);
   };
 
   const navigateToScreen = (screen: string) => {
@@ -142,10 +186,14 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           console.log(`📱 Navigating to history...`);
           NavigationManager.navigateToHistorySection();
           break;
+        case "goals":
+          // Navigate to goals management screen
+          console.log(`📱 Navigating to goals...`);
+          NavigationManager.navigateToGoalsSection();
+          break;
         case "analytics":
         case "budget":
         case "notifications":
-        case "settings":
           // For now, these will show a coming soon message
           console.log(`Navigate to ${screen} - Feature coming soon!`);
           Alert.alert(
@@ -153,6 +201,11 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             `${screen.charAt(0).toUpperCase() + screen.slice(1)} feature is under development and will be available in a future update.`,
             [{ text: "OK", style: "default" }]
           );
+          break;
+        case "settings":
+          // Navigate to settings screen
+          console.log(`📱 Navigating to settings...`);
+          NavigationManager.navigateToSettingsSection();
           break;
         default:
           console.log(`Navigate to ${screen} - Unknown route`);
@@ -229,21 +282,50 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             }}
           >
             <View className="flex-row items-center">
-              <View
-                className="items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm"
-                style={{
-                  backgroundColor: "#10B981",
-                  shadowColor: "#10B981",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 4,
-                }}
+              <ProfileImagePicker
+                userId={authState.user.id}
+                onImageUploaded={handleProfileImageUpload}
+                onError={handleProfileImageError}
               >
-                <Text className="text-2xl font-bold text-white">
-                  {(authState?.user?.fullName || "U").charAt(0).toUpperCase()}
-                </Text>
-              </View>
+                <View
+                  className="items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm relative"
+                  style={{
+                    backgroundColor: profileImage ? "transparent" : "#10B981",
+                    shadowColor: "#10B981",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }}
+                >
+                  {profileImage ? (
+                    <>
+                      <Image
+                        source={{ uri: profileImage }}
+                        className="w-16 h-16 rounded-full"
+                        style={{ resizeMode: "cover" }}
+                      />
+                      {/* Camera icon overlay for edit indication */}
+                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 rounded-full border-2 border-white">
+                        <Ionicons name="camera" size={12} color="white" />
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text className="text-2xl font-bold text-white">
+                        {UserProfileService.getDefaultAvatar(
+                          authState?.user?.fullName
+                        )}
+                      </Text>
+                      {/* Camera icon overlay for upload indication */}
+                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 rounded-full border-2 border-white">
+                        <Ionicons name="add" size={12} color="white" />
+                      </View>
+                    </>
+                  )}
+                </View>
+              </ProfileImagePicker>
+
               <View className="flex-1">
                 <Text className="mb-1 text-lg font-semibold text-gray-800">
                   {authState?.user?.fullName || "User Name"}
