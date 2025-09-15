@@ -166,6 +166,20 @@ export class NavigationManager {
   }
 
   /**
+   * Navigate to transaction management and replace current route
+   */
+  static navigateToTransactionSection(): void {
+    this.navigateToMainSection("/(transaction)");
+  }
+
+  /**
+   * Navigate to transaction history and replace current route
+   */
+  static navigateToHistorySection(): void {
+    this.navigateToMainSection("/(history)");
+  }
+
+  /**
    * Reset to a specific route and clear all history
    */
   static resetToRoute(route: string): void {
