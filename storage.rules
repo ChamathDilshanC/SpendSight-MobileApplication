@@ -1,0 +1,23 @@
+// Firebase Storage Rules for SpendSight Mobile App
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow users to upload and manage their own profile images
+    match /profile-images/{userId}_{timestamp}.jpg {
+      allow read, write, delete: if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // Alternative pattern for different file extensions
+    match /profile-images/{allPaths=**} {
+      allow read, write, delete: if request.auth != null &&
+        resource.name.matches('profile_' + request.auth.uid + '_.*');
+    }
+
+    // Allow read access for authenticated users to view profile images
+    match /profile-images/{allPaths=**} {
+      allow read: if request.auth != null;
+    }
+  }
+}
