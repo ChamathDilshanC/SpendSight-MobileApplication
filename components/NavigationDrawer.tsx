@@ -113,24 +113,24 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
       switch (screen) {
         case "dashboard":
         case "expenses":
-          // Navigate to main dashboard
+          // Navigate to main dashboard (replace current screen)
           console.log(`📱 Navigating to ${screen}...`);
-          NavigationManager.navigateToDashboardHome();
+          NavigationManager.navigateToDashboardSection();
           break;
         case "accounts":
-          // Navigate to account management screen
+          // Navigate to account management screen (replace current screen)
           console.log(`📱 Navigating to accounts...`);
-          NavigationManager.safeNavigate("/(account)/account", "push");
+          NavigationManager.navigateToAccountsSection();
           break;
         case "categories":
-          // Navigate to categories screen
+          // Navigate to categories screen (replace current screen)
           console.log(`📱 Navigating to categories...`);
-          NavigationManager.safeNavigate("/(categories)/categories", "push");
+          NavigationManager.navigateToCategoriesSection();
           break;
         case "help":
-          // Navigate to help & support screen
+          // Navigate to help & support screen (replace current screen)
           console.log(`📱 Navigating to help...`);
-          NavigationManager.safeNavigate("/(help)/help", "push");
+          NavigationManager.navigateToHelpSection();
           break;
         case "analytics":
         case "budget":
