@@ -29,13 +29,54 @@ export class TransactionService {
     try {
       // Create the transaction
       const transactionRef = doc(collection(db, "transactions"));
-      batch.set(transactionRef, {
-        ...transactionData,
+
+      // Prepare transaction data with defined values only
+      const baseData: any = {
         id: transactionRef.id,
         userId,
+        type: transactionData.type,
+        amount: transactionData.amount,
+        currency: transactionData.currency,
+        description: transactionData.description,
+        date: transactionData.date,
+        isRecurring: transactionData.isRecurring,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      // Add optional fields only if they have values
+      if (transactionData.categoryId !== undefined) {
+        baseData.categoryId = transactionData.categoryId;
+      }
+      if (transactionData.fromAccountId !== undefined) {
+        baseData.fromAccountId = transactionData.fromAccountId;
+      }
+      if (transactionData.toAccountId !== undefined) {
+        baseData.toAccountId = transactionData.toAccountId;
+      }
+      if (transactionData.goalId !== undefined) {
+        baseData.goalId = transactionData.goalId;
+      }
+      if (
+        transactionData.tags !== undefined &&
+        transactionData.tags.length > 0
+      ) {
+        baseData.tags = transactionData.tags;
+      }
+      if (
+        transactionData.attachments !== undefined &&
+        transactionData.attachments.length > 0
+      ) {
+        baseData.attachments = transactionData.attachments;
+      }
+      if (transactionData.location !== undefined) {
+        baseData.location = transactionData.location;
+      }
+      if (transactionData.recurringPattern !== undefined) {
+        baseData.recurringPattern = transactionData.recurringPattern;
+      }
+
+      batch.set(transactionRef, baseData);
 
       // Update account balances
       if (transactionData.type === "expense" && transactionData.fromAccountId) {
@@ -55,6 +96,23 @@ export class TransactionService {
           balance: increment(transactionData.amount),
           updatedAt: serverTimestamp(),
         });
+      } else if (transactionData.type === "goal_payment") {
+        // Handle goal payments - could be deposit (fromAccountId) or withdrawal (toAccountId)
+        if (transactionData.fromAccountId) {
+          // Goal deposit: deduct from account
+          const accountRef = doc(db, "accounts", transactionData.fromAccountId);
+          batch.update(accountRef, {
+            balance: increment(-transactionData.amount),
+            updatedAt: serverTimestamp(),
+          });
+        } else if (transactionData.toAccountId) {
+          // Goal withdrawal: add to account
+          const accountRef = doc(db, "accounts", transactionData.toAccountId);
+          batch.update(accountRef, {
+            balance: increment(transactionData.amount),
+            updatedAt: serverTimestamp(),
+          });
+        }
       } else if (
         transactionData.type === "transfer" &&
         transactionData.fromAccountId &&
