@@ -4,12 +4,12 @@ import {
   Alert,
   Linking,
   ScrollView,
-  StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
 
 interface HelpSectionProps {
   title: string;
@@ -153,7 +153,7 @@ const Help = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <AppHeader title="Help & Support" />
 
       <ScrollView
         className="flex-1"
