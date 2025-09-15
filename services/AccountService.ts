@@ -12,36 +12,67 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { Account, DefaultAccounts } from "../types/finance";
+import { Account } from "../types/finance";
+
+// Define the 6 default accounts directly in the service
+const DEFAULT_ACCOUNTS = [
+  {
+    name: "Main Account",
+    type: "main" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Primary account for daily transactions",
+    color: "#4ECDC4",
+    icon: "wallet",
+  },
+  {
+    name: "Savings Account",
+    type: "savings" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Long-term savings and emergency fund",
+    color: "#45B7D1",
+    icon: "save",
+  },
+  {
+    name: "Expenses Account",
+    type: "expenses" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Dedicated account for planned expenses",
+    color: "#96CEB4",
+    icon: "card",
+  },
+  {
+    name: "Investment Account",
+    type: "custom" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Investment fund for long-term growth",
+    color: "#FF6B6B",
+    icon: "trending-up",
+  },
+  {
+    name: "Emergency Fund",
+    type: "custom" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Emergency fund for unexpected expenses",
+    color: "#FFA726",
+    icon: "shield",
+  },
+  {
+    name: "Goals & Dreams",
+    type: "custom" as const,
+    currency: "USD",
+    isActive: true,
+    description: "Saving for personal goals and aspirations",
+    color: "#AB47BC",
+    icon: "star",
+  },
+];
 
 export class AccountService {
-  /**
-   * Initialize default accounts for a new user
-   */
-  static async initializeDefaultAccounts(userId: string): Promise<void> {
-    const batch = writeBatch(db);
-
-    try {
-      // Create default accounts
-      for (const accountData of DefaultAccounts) {
-        const accountRef = doc(collection(db, "accounts"));
-        batch.set(accountRef, {
-          ...accountData,
-          id: accountRef.id,
-          userId,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      await batch.commit();
-      console.log("✅ Default accounts initialized for user:", userId);
-    } catch (error) {
-      console.error("❌ Error initializing default accounts:", error);
-      throw error;
-    }
-  }
-
   /**
    * Get all accounts for a user
    */
@@ -206,5 +237,125 @@ export class AccountService {
         console.error("❌ Error in accounts listener:", error);
       }
     );
+  }
+
+  /**
+   * Transfer money between accounts
+   */
+  static async transferBetweenAccounts(
+    fromAccountId: string,
+    toAccountId: string,
+    amount: number,
+    description?: string
+  ): Promise<void> {
+    if (amount <= 0) {
+      throw new Error("Transfer amount must be greater than 0");
+    }
+
+    if (fromAccountId === toAccountId) {
+      throw new Error("Cannot transfer to the same account");
+    }
+
+    const batch = writeBatch(db);
+
+    try {
+      console.log("🔄 Starting transfer:", {
+        fromAccountId,
+        toAccountId,
+        amount,
+      });
+
+      // Get current balances to validate transfer
+      const fromAccountRef = doc(db, "accounts", fromAccountId);
+      const toAccountRef = doc(db, "accounts", toAccountId);
+
+      // Update account balances
+      batch.update(fromAccountRef, {
+        balance: increment(-amount),
+        updatedAt: serverTimestamp(),
+      });
+
+      batch.update(toAccountRef, {
+        balance: increment(amount),
+        updatedAt: serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      console.log("✅ Transfer completed successfully");
+    } catch (error) {
+      console.error("❌ Error transferring between accounts:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize accounts with budget allocation for new users
+   */
+  static async initializeAccountsWithBudget(
+    userId: string,
+    monthlyBudget: number
+  ): Promise<void> {
+    const batch = writeBatch(db);
+
+    try {
+      console.log(
+        "💰 Initializing accounts with comprehensive 6-account budget allocation:",
+        monthlyBudget
+      );
+
+      // Calculate allocations using smart budgeting principles
+      const mainAllocation = monthlyBudget * 0.35; // 35% - Primary spending
+      const savingsAllocation = monthlyBudget * 0.2; // 20% - General savings
+      const expensesAllocation = monthlyBudget * 0.25; // 25% - Monthly expenses
+      const investmentAllocation = monthlyBudget * 0.1; // 10% - Investment fund
+      const emergencyAllocation = monthlyBudget * 0.05; // 5% - Emergency fund
+      const goalsAllocation = monthlyBudget * 0.05; // 5% - Goals and dreams
+
+      // Create all 6 accounts with allocated amounts
+      const accountsWithBudget = [
+        {
+          ...DEFAULT_ACCOUNTS[0], // Main Account
+          balance: mainAllocation,
+        },
+        {
+          ...DEFAULT_ACCOUNTS[1], // Savings Account
+          balance: savingsAllocation,
+        },
+        {
+          ...DEFAULT_ACCOUNTS[2], // Expenses Account
+          balance: expensesAllocation,
+        },
+        {
+          ...DEFAULT_ACCOUNTS[3], // Investment Account
+          balance: investmentAllocation,
+        },
+        {
+          ...DEFAULT_ACCOUNTS[4], // Emergency Fund
+          balance: emergencyAllocation,
+        },
+        {
+          ...DEFAULT_ACCOUNTS[5], // Goals & Dreams
+          balance: goalsAllocation,
+        },
+      ];
+
+      for (const accountData of accountsWithBudget) {
+        const accountRef = doc(collection(db, "accounts"));
+        batch.set(accountRef, {
+          ...accountData,
+          id: accountRef.id,
+          userId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      console.log("✅ Accounts initialized with budget allocation");
+    } catch (error) {
+      console.error("❌ Error initializing accounts with budget:", error);
+      throw error;
+    }
   }
 }
