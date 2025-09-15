@@ -1,95 +1,261 @@
-// Firestore Security Rules for SpendSight
+// Firestore Security Rules for SpendSight Mobile Application
+// Updated for comprehensive account management, budget allocation, and security
 // Copy this content to your Firebase Console -> Firestore Database -> Rules
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ========================================
+    // USER MANAGEMENT
+    // ========================================
+
     // Users can only access their own user document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Validate user data structure
+      allow create, update: if request.auth != null &&
+        request.auth.uid == userId &&
+        isValidUserData(request.resource.data);
     }
 
+    // ========================================
+    // ACCOUNT MANAGEMENT
+    // ========================================
+
     // Users can only access their own accounts
+    // Supports Main, Savings, Expenses, and Custom account types
     match /accounts/{accountId} {
       allow read, write: if request.auth != null &&
         request.auth.uid == resource.data.userId;
+
       allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
+        request.auth.uid == request.resource.data.userId &&
+        isValidAccountData(request.resource.data);
+
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        isValidAccountData(request.resource.data);
     }
 
-    // Users can only access their own categories
-    match /categories/{categoryId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
-    }
+
+    // ========================================
+    // TRANSACTION MANAGEMENT
+    // ========================================
 
     // Users can only access their own transactions
+    // Supports expense, income, transfer, and goal_payment types
     match /transactions/{transactionId} {
       allow read, write: if request.auth != null &&
         request.auth.uid == resource.data.userId;
+
       allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
+        request.auth.uid == request.resource.data.userId &&
+        isValidTransactionData(request.resource.data);
+
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        isValidTransactionData(request.resource.data);
     }
 
-    // Users can only access their own goals
+    // ========================================
+    // CATEGORY MANAGEMENT
+    // ========================================
+
+    // Users can only access their own categories
+    // Supports both default system categories and custom user categories
+    match /categories/{categoryId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidCategoryData(request.resource.data);
+
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        isValidCategoryData(request.resource.data);
+    }
+
+    // ========================================
+    // GOAL MANAGEMENT
+    // ========================================
+
+    // Users can only access their own savings goals
     match /goals/{goalId} {
       allow read, write: if request.auth != null &&
         request.auth.uid == resource.data.userId;
+
       allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
+        request.auth.uid == request.resource.data.userId &&
+        isValidGoalData(request.resource.data);
+
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        isValidGoalData(request.resource.data);
     }
 
-    // Users can only access their own budgets
+    // ========================================
+    // BUDGET MANAGEMENT
+    // ========================================
+
+    // Users can only access their own budgets and budget allocations
     match /budgets/{budgetId} {
       allow read, write: if request.auth != null &&
         request.auth.uid == resource.data.userId;
+
       allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
+        request.auth.uid == request.resource.data.userId &&
+        isValidBudgetData(request.resource.data);
+
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        isValidBudgetData(request.resource.data);
     }
 
-    // Helper function to validate data structure
-    function isValidAccount(data) {
-      return data.keys().hasAll(['userId', 'name', 'type', 'balance', 'currency', 'isActive']) &&
+
+    // ========================================
+    // DATA VALIDATION FUNCTIONS
+    // ========================================
+
+    // Validate user data structure
+    function isValidUserData(data) {
+      return data != null &&
+        data.keys().hasAll(['email', 'displayName']) &&
+        data.email is string &&
+        data.displayName is string &&
+        data.email.matches('.*@.*\\..*'); // Basic email format
+    }
+
+    // Validate account data structure - Updated for SpendSight account types
+    function isValidAccountData(data) {
+      return data != null &&
+        data.keys().hasAll(['userId', 'name', 'type', 'balance', 'currency', 'isActive']) &&
         data.userId is string &&
         data.name is string &&
         data.type in ['main', 'savings', 'expenses', 'custom'] &&
         data.balance is number &&
+        data.balance >= 0 && // Balance cannot be negative
         data.currency is string &&
-        data.isActive is bool;
+        data.currency.size() == 3 && // Currency code should be 3 characters (USD, EUR, etc.)
+        data.isActive is bool &&
+        // Optional fields validation
+        (!data.keys().hasAny(['description']) || data.description is string) &&
+        (!data.keys().hasAny(['color']) || data.color is string) &&
+        (!data.keys().hasAny(['icon']) || data.icon is string);
     }
 
-    function isValidTransaction(data) {
-      return data.keys().hasAll(['userId', 'type', 'amount', 'currency', 'description', 'date']) &&
+    // Validate transaction data structure - Updated for all transaction types
+    function isValidTransactionData(data) {
+      return data != null &&
+        data.keys().hasAll(['userId', 'type', 'amount', 'currency', 'description', 'date']) &&
         data.userId is string &&
-        data.type in ['expense', 'income', 'transfer'] &&
+        data.type in ['expense', 'income', 'transfer', 'goal_payment'] &&
         data.amount is number &&
+        data.amount > 0 && // Amount must be positive
         data.currency is string &&
+        data.currency.size() == 3 &&
         data.description is string &&
-        data.date is timestamp;
+        data.date is timestamp &&
+        // Account validation for transfers
+        (data.type != 'transfer' ||
+          (data.keys().hasAll(['fromAccountId', 'toAccountId']) &&
+           data.fromAccountId is string &&
+           data.toAccountId is string &&
+           data.fromAccountId != data.toAccountId)) &&
+        // Category validation for expenses and income
+        (data.type in ['transfer', 'goal_payment'] ||
+          (data.keys().hasAny(['categoryId']) && data.categoryId is string)) &&
+        // Goal validation for goal payments
+        (data.type != 'goal_payment' ||
+          (data.keys().hasAny(['goalId']) && data.goalId is string));
     }
 
-    function isValidCategory(data) {
-      return data.keys().hasAll(['userId', 'name', 'type', 'icon', 'color', 'isDefault']) &&
+    // Validate category data structure - Enhanced for system and custom categories
+    function isValidCategoryData(data) {
+      return data != null &&
+        data.keys().hasAll(['userId', 'name', 'type', 'icon', 'color', 'isDefault']) &&
         data.userId is string &&
         data.name is string &&
+        data.name.size() > 0 &&
         data.type in ['expense', 'income'] &&
         data.icon is string &&
         data.color is string &&
-        data.isDefault is bool;
+        data.color.matches('#[0-9A-Fa-f]{6}') && // Valid hex color
+        data.isDefault is bool &&
+        // Optional description field
+        (!data.keys().hasAny(['description']) || data.description is string);
     }
 
-    function isValidGoal(data) {
-      return data.keys().hasAll(['userId', 'name', 'targetAmount', 'currentAmount', 'currency', 'targetDate', 'isCompleted']) &&
+    // Validate goal data structure - Enhanced for goal tracking
+    function isValidGoalData(data) {
+      return data != null &&
+        data.keys().hasAll(['userId', 'name', 'targetAmount', 'currentAmount', 'currency', 'targetDate']) &&
         data.userId is string &&
         data.name is string &&
+        data.name.size() > 0 &&
         data.targetAmount is number &&
+        data.targetAmount > 0 &&
         data.currentAmount is number &&
+        data.currentAmount >= 0 &&
+        data.currentAmount <= data.targetAmount &&
         data.currency is string &&
+        data.currency.size() == 3 &&
         data.targetDate is timestamp &&
-        data.isCompleted is bool;
+        data.targetDate > request.time && // Target date must be in the future
+        // Optional fields
+        (!data.keys().hasAny(['description']) || data.description is string) &&
+        (!data.keys().hasAny(['isCompleted']) || data.isCompleted is bool) &&
+        (!data.keys().hasAny(['status']) || data.status in ['active', 'completed', 'paused', 'cancelled']);
+    }
+
+    // Validate budget data structure - New for budget management
+    function isValidBudgetData(data) {
+      return data != null &&
+        data.keys().hasAll(['userId', 'name', 'totalAmount', 'currency', 'period']) &&
+        data.userId is string &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.totalAmount is number &&
+        data.totalAmount > 0 &&
+        data.currency is string &&
+        data.currency.size() == 3 &&
+        data.period in ['monthly', 'weekly', 'yearly'] &&
+        // Optional allocation fields for 50/30/20 rule
+        (!data.keys().hasAny(['mainAllocation']) ||
+          (data.mainAllocation is number && data.mainAllocation >= 0)) &&
+        (!data.keys().hasAny(['savingsAllocation']) ||
+          (data.savingsAllocation is number && data.savingsAllocation >= 0)) &&
+        (!data.keys().hasAny(['expensesAllocation']) ||
+          (data.expensesAllocation is number && data.expensesAllocation >= 0)) &&
+        // Optional fields
+        (!data.keys().hasAny(['isActive']) || data.isActive is bool) &&
+        (!data.keys().hasAny(['startDate']) || data.startDate is timestamp) &&
+        (!data.keys().hasAny(['endDate']) || data.endDate is timestamp);
+    }
+
+    // ========================================
+    // ADDITIONAL SECURITY FUNCTIONS
+    // ========================================
+
+    // Check if user is authenticated and owns the resource
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Validate timestamp fields are reasonable
+    function isValidTimestamp(dateValue) {
+      return dateValue is timestamp &&
+        dateValue > timestamp.date(2020, 1, 1) && // After 2020
+        dateValue < timestamp.date(2030, 12, 31); // Before 2030
+    }
+
+    // Validate currency amount is reasonable
+    function isValidAmount(amount) {
+      return amount is number &&
+        amount >= 0 &&
+        amount < 1000000000; // Max 1 billion for reasonable limits
     }
   }
 }
