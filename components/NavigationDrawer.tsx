@@ -117,6 +117,11 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           console.log(`📱 Navigating to ${screen}...`);
           NavigationManager.navigateToDashboardHome();
           break;
+        case "accounts":
+          // Navigate to account management screen
+          console.log(`📱 Navigating to accounts...`);
+          NavigationManager.safeNavigate("/(account)/account", "push");
+          break;
         case "analytics":
         case "budget":
         case "transactions":
@@ -219,23 +224,15 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 }}
               >
                 <Text className="text-2xl font-bold text-white">
-                  {authState?.user?.fullName
-                    ? authState.user.fullName.charAt(0).toUpperCase()
-                    : "U"}
+                  {(authState?.user?.fullName || "U").charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View className="flex-1">
                 <Text className="mb-1 text-lg font-semibold text-gray-800">
-                  {authState?.user?.fullName &&
-                  typeof authState.user.fullName === "string"
-                    ? authState.user.fullName
-                    : "User Name"}
+                  {authState?.user?.fullName || "User Name"}
                 </Text>
                 <Text className="text-sm text-gray-500">
-                  {authState?.user?.email &&
-                  typeof authState.user.email === "string"
-                    ? authState.user.email
-                    : "user@example.com"}
+                  {authState?.user?.email || "user@example.com"}
                 </Text>
                 <View className="mt-2">
                   <View className="w-8 h-1 rounded-full bg-emerald-400" />
@@ -255,8 +252,8 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
             <DrawerItem
               icon="wallet-outline"
-              title="My Expenses"
-              onPress={() => navigateToScreen("expenses")}
+              title="My Accounts"
+              onPress={() => navigateToScreen("accounts")}
               isActive={false}
             />
 
