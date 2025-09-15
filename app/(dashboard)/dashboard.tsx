@@ -25,7 +25,7 @@ const Dashboard = () => {
   const { authState, logout } = useAuth();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
-  // Use Reanimated shared values instead of Animated.Value
+  // Use Reanimated shared values instead of Animated.Value - MUST be called before any returns
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
 
@@ -41,6 +41,17 @@ const Dashboard = () => {
       transform: [{ translateX: slideAnim.value }],
     };
   });
+
+  // Safety check to prevent rendering issues - AFTER all hooks
+  if (!authState || !authState.user) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="items-center justify-center flex-1">
+          <Text className="text-lg text-gray-600">Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleLogout = async () => {
     await logout();
@@ -85,7 +96,7 @@ const Dashboard = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <SafeAreaView className="flex-1 bg-white">
         {/* Header with hamburger menu */}
-        <View className="flex-row items-center justify-between bg-white px-5 py-4 border-b border-gray-200">
+        <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-200">
           <TouchableOpacity
             className="p-3 rounded-lg min-w-[44px] min-h-[44px] justify-center items-center active:bg-gray-100"
             onPress={openDrawer}
@@ -99,32 +110,39 @@ const Dashboard = () => {
         </View>
 
         {/* Main content */}
-        <View className="flex-1 justify-center items-center p-5">
-          <Text className="text-3xl font-bold text-gray-900 mb-3">
+        <View className="items-center justify-center flex-1 p-5">
+          <Text className="mb-3 text-3xl font-bold text-gray-900">
             Welcome to SpendSight
           </Text>
-          <Text className="text-lg text-gray-600 mb-1">
-            Hello, {authState.user?.fullName || "User"}!
+          <Text className="mb-1 text-lg text-gray-600">
+            Hello,{" "}
+            {authState?.user?.fullName &&
+            typeof authState.user.fullName === "string"
+              ? authState.user.fullName
+              : "User"}
+            !
           </Text>
-          <Text className="text-base text-gray-500 mb-10">
-            {authState.user?.email}
+          <Text className="mb-10 text-base text-gray-500">
+            {authState?.user?.email && typeof authState.user.email === "string"
+              ? authState.user.email
+              : "No email"}
           </Text>
 
           <TouchableOpacity
-            className="bg-red-500 px-8 py-4 rounded-xl active:bg-red-600"
+            className="px-8 py-4 bg-red-500 rounded-xl active:bg-red-600"
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <Text className="text-white text-base font-semibold">Logout</Text>
+            <Text className="text-base font-semibold text-white">Logout</Text>
           </TouchableOpacity>
 
           {/* Temporary test button for drawer */}
           <TouchableOpacity
-            className="bg-blue-500 px-8 py-4 rounded-xl mt-5 active:bg-blue-600"
+            className="px-8 py-4 mt-5 bg-blue-500 rounded-xl active:bg-blue-600"
             onPress={openDrawer}
             activeOpacity={0.8}
           >
-            <Text className="text-white text-base font-semibold">
+            <Text className="text-base font-semibold text-white">
               Test Drawer (Debug)
             </Text>
           </TouchableOpacity>
