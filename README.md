@@ -4,11 +4,11 @@
 
 ## 🎥 Demo Video
 
-- YouTube: https://youtu.be/REPLACE_WITH_YOUR_VIDEO_ID
+- YouTube: not yet updated
 
 ## 📦 APK Download
 
-- Google Drive (APK): https://drive.google.com/file/d/REPLACE_WITH_YOUR_APK_ID/view
+- Google Drive (APK): [https://drive.google.com/file/d/REPLACE_WITH_YOUR_APK_ID/view](https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing)
 
 ---
 
