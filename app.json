@@ -7,43 +7,35 @@
     "icon": "./assets/images/SpendSightLogo.png",
     "scheme": "spendsight",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chamathdilshan.spendsight"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/SpendSightLogo.png",
-        "backgroundImage": "./assets/images/GetStartBG.png",
-        "monochromeImage": "./assets/images/SpendSightLogo.png"
+        "foregroundImage": "./assets/images/SpendSightLogo.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.chamathdilshan.spendsight",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/SpendSightLogo.png",
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "plugins": ["expo-router"],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "7f73bd84-e734-48c9-a36f-be738dc29dd3"
+      }
     }
   }
 }
