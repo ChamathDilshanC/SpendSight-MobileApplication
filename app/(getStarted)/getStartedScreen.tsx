@@ -47,12 +47,13 @@ const GetStartedScreen = () => {
       <View className="flex-1">
         <ImageBackground
           source={BACKGROUND_IMAGE}
-          className="flex-1 justify-end"
+          className="justify-end flex-1"
           resizeMode="cover"
         >
-          <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          {/* Simple transparent black overlay for bottom half */}
+          <View className="absolute bottom-0 left-0 right-0 h-full bg-black/60 rounded-t-3xl" />
 
-          <View className="px-6 pb-12 pt-8">
+          <View className="px-6 pt-8 pb-12">
             <MotiView
               from={{ opacity: 0, translateY: 50 }}
               animate={{
@@ -65,10 +66,10 @@ const GetStartedScreen = () => {
               }}
               className="mb-4"
             >
-              <Text className="text-4xl font-bold text-white leading-tight">
+              <Text className="text-4xl font-bold leading-tight text-white drop-shadow-lg">
                 Take control of your
               </Text>
-              <Text className="text-4xl font-bold text-white leading-tight">
+              <Text className="text-4xl font-bold leading-tight text-white drop-shadow-lg">
                 financial future.
               </Text>
             </MotiView>
@@ -85,10 +86,10 @@ const GetStartedScreen = () => {
               }}
               className="mb-12"
             >
-              <Text className="text-lg text-white/80 leading-relaxed">
+              <Text className="text-lg leading-relaxed text-white/90 drop-shadow-md">
                 Track your expenses smartly and achieve your financial goals.
               </Text>
-              <Text className="text-lg text-white/80 leading-relaxed">
+              <Text className="text-lg leading-relaxed text-white/90 drop-shadow-md">
                 Spend Smart, Live Better.
               </Text>
             </MotiView>
@@ -122,7 +123,7 @@ const GetStartedScreen = () => {
                     },
                   }}
                 >
-                  <Text className="text-black text-lg font-bold text-center">
+                  <Text className="text-lg font-bold text-center text-black">
                     Get Started
                   </Text>
                 </MotiView>
@@ -138,9 +139,9 @@ const GetStartedScreen = () => {
               className="items-center mb-5"
             >
               <TouchableOpacity onPress={handleLogin} activeOpacity={0.7}>
-                <Text className="text-white/80 text-base">
+                <Text className="text-base text-white/95 drop-shadow-md">
                   Already have an account?{" "}
-                  <Text className="text-white font-semibold underline">
+                  <Text className="font-semibold text-white underline drop-shadow-md">
                     Login
                   </Text>
                 </Text>

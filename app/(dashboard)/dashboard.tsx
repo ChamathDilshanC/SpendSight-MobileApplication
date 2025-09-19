@@ -22,7 +22,7 @@ import NavigationDrawer from "../../components/NavigationDrawer";
 import { NavigationShortcuts } from "../../components/NavigationShortcuts";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
-import { useDisableBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
+import { useDashboardBackButton } from "../../hooks/useBackButton";
 import { AccountService } from "../../services/AccountService";
 import { NavigationManager } from "../../utils/navigationManager";
 
@@ -35,7 +35,6 @@ const Dashboard = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
-
 
   // Redirect hardware back button to dashboard (prevents leaving main section)
   useDashboardBackButton(true);
@@ -195,7 +194,7 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await logout();
     // Navigate back to auth and clear dashboard history
-    NavigationManager.navigateToAuth();
+    NavigationManager.safeNavigate("/(auth)/login", "replace");
   };
 
   const openDrawer = () => {
