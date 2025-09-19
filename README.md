@@ -2,19 +2,24 @@
 
 > Personal finance tracker built with Expo + React Native, Firebase Auth/Firestore/Storage, and a clean service architecture.
 
-## 🎥 Demo Video
+## 🎬 Experience the App
 
-- YouTube: not yet updated
+<div align="center">
 
-## 📦 APK Download
+### 📱 Live Demo
+> *Coming Soon - Video demonstration of all features*
 
-<a href="https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing" target="_blank">
-  <button style="background-color: #4285f4; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
-    📱 Download APK from Google Drive
-  </button>
-</a>
+[![🎥 Watch Demo](https://img.shields.io/badge/🎥_Watch_Demo-Coming_Soon-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=black)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 
 ---
+
+### 📲 Get the App Now
+
+[![📱 Download APK](https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black)](https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing)
+
+*Direct download from Google Drive • No registration required*
+
+</div>
 
 ## Overview
 
