@@ -8,7 +8,11 @@
 
 ## 📦 APK Download
 
-- Google Drive (APK): [https://drive.google.com/file/d/REPLACE_WITH_YOUR_APK_ID/view](https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing)
+<a href="https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing" target="_blank">
+  <button style="background-color: #4285f4; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+    📱 Download APK from Google Drive
+  </button>
+</a>
 
 ---
 
