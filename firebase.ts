@@ -18,8 +18,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
-// For React Native, Firebase Auth automatically uses AsyncStorage for persistence
-// We don't need to explicitly configure it for this Firebase version
+// Firebase Auth will automatically use AsyncStorage for persistence in React Native
+// when @react-native-async-storage/async-storage is installed
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);

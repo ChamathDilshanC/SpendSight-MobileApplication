@@ -12,6 +12,7 @@ import { LineChart, PieChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
+import { useDashboardBackButton } from "../../hooks/useBackButton";
 
 const { width: screenWidth } = Dimensions.get("window");
 const chartConfig = {
@@ -34,6 +35,9 @@ const chartConfig = {
 type TimeFilter = "week" | "month" | "3months" | "year";
 
 export default function HistoryScreen() {
+  // Redirect hardware back button to dashboard
+  useDashboardBackButton(true);
+  
   const { transactions, categories, refreshData } = useFinance();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
   const [isRefreshing, setIsRefreshing] = useState(false);

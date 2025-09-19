@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
-import { useTabBackButton } from "../../hooks/useBackButton";
+import { useTabBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
 
 interface HelpSectionProps {
   title: string;
@@ -83,6 +83,9 @@ const ContactOption: React.FC<ContactOptionProps> = ({
 );
 
 const Help = () => {
+  // Redirect hardware back button to dashboard
+  useDashboardBackButton(true);
+
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
   // Force enable back button hook for help screen

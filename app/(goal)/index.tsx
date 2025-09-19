@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
-import { useTabBackButton } from "../../hooks/useBackButton";
+import { useTabBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
 import { GoalService } from "../../services/GoalService";
 import { Goal } from "../../types/finance";
 
@@ -34,8 +34,9 @@ export default function GoalsScreen() {
   const { authState } = useAuth();
   const { accounts, refreshData } = useFinance();
 
-  // Force enable back button hook for goals screen
-  useTabBackButton(true);
+
+  // Redirect hardware back button to dashboard
+  useDashboardBackButton(true);
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);

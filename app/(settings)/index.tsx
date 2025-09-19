@@ -1,3 +1,5 @@
+
+import { useDashboardBackButton } from "../../hooks/useBackButton";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -59,6 +61,8 @@ const SettingItem: React.FC<SettingItemProps> = ({
 );
 
 export default function SettingsScreen() {
+  // Redirect hardware back button to dashboard
+  useDashboardBackButton(true);
   const { authState, logout } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
 

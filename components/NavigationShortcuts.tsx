@@ -61,7 +61,8 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
     if (onNavigate) {
       onNavigate(shortcut.route);
     } else {
-      NavigationManager.navigateToMainSection(shortcut.route);
+  // Use push so user can go back to dashboard
+  NavigationManager.navigateToMainSection(shortcut.route, "push");
     }
   };
 

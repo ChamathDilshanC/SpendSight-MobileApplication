@@ -22,7 +22,7 @@ import NavigationDrawer from "../../components/NavigationDrawer";
 import { NavigationShortcuts } from "../../components/NavigationShortcuts";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
-import { useDisableBackButton } from "../../hooks/useBackButton";
+import { useDisableBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
 import { AccountService } from "../../services/AccountService";
 import { NavigationManager } from "../../utils/navigationManager";
 
@@ -36,8 +36,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
 
-  // Disable hardware back button to prevent going back to auth screens
-  useDisableBackButton(true);
+
+  // Redirect hardware back button to dashboard (prevents leaving main section)
+  useDashboardBackButton(true);
 
   // Use Reanimated shared values instead of Animated.Value - MUST be called before any returns
   const slideAnim = useSharedValue(-DRAWER_WIDTH);

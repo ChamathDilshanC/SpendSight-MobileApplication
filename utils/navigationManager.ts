@@ -133,9 +133,13 @@ export class NavigationManager {
    * Navigate between main app sections (replaces current screen to prevent stack buildup)
    * This is specifically for drawer navigation between main sections
    */
-  static navigateToMainSection(route: string): void {
-    console.log(`🏗️ Navigating to main section: ${route}`);
-    this.safeNavigate(route, "replace");
+  /**
+   * Navigate between main app sections (optionally specify method: push or replace)
+   * Use push to allow back navigation, replace to clear stack
+   */
+  static navigateToMainSection(route: string, method: "replace" | "push" = "replace"): void {
+    console.log(`🏗️ Navigating to main section: ${route} using ${method}`);
+    this.safeNavigate(route, method);
   }
 
   /**
