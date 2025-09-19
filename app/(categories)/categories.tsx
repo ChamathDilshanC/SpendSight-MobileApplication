@@ -1,10 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { MotiText, MotiView } from "moti";
+import { Skeleton } from "moti/skeleton";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   RefreshControl,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
@@ -13,13 +18,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useAuth } from "../../context/FirebaseAuthContext";
-import { useTabBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
+import { useDashboardBackButton } from "../../hooks/useBackButton";
 import { CategoryService } from "../../services/CategoryService";
 import { Category } from "../../types/finance";
 
+interface NewCategoryForm {
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  icon: string;
+}
+
 const Categories = () => {
   const { authState } = useAuth();
-
 
   // Redirect hardware back button to dashboard
   useDashboardBackButton(true);
@@ -33,6 +44,78 @@ const Categories = () => {
     "all" | "expense" | "income"
   >("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [newCategory, setNewCategory] = useState<NewCategoryForm>({
+    name: "",
+    type: "expense",
+    color: "#6366F1",
+    icon: "wallet-outline",
+  });
+
+  const categoryTypes = [
+    {
+      value: "expense" as const,
+      label: "Expense",
+      icon: "trending-down-outline",
+      color: "#EF4444",
+    },
+    {
+      value: "income" as const,
+      label: "Income",
+      icon: "trending-up-outline",
+      color: "#10B981",
+    },
+  ];
+
+  const availableIcons = [
+    "wallet-outline",
+    "card-outline",
+    "home-outline",
+    "car-outline",
+    "restaurant-outline",
+    "medical-outline",
+    "fitness-outline",
+    "school-outline",
+    "briefcase-outline",
+    "gift-outline",
+    "airplane-outline",
+    "musical-notes-outline",
+    "game-controller-outline",
+    "book-outline",
+    "camera-outline",
+    "build-outline",
+    "storefront-outline",
+    "bag-outline",
+    "phone-portrait-outline",
+    "tv-outline",
+    "business-outline",
+    "cash-outline",
+    "trending-up-outline",
+    "heart-outline",
+  ];
+
+  const availableColors = [
+    "#6366F1",
+    "#8B5CF6",
+    "#EC4899",
+    "#EF4444",
+    "#F97316",
+    "#EAB308",
+    "#22C55E",
+    "#10B981",
+    "#06B6D4",
+    "#3B82F6",
+    "#A855F7",
+    "#D946EF",
+    "#F59E0B",
+    "#84CC16",
+    "#059669",
+    "#0891B2",
+    "#1D4ED8",
+    "#7C3AED",
+    "#DC2626",
+    "#16A34A",
+  ];
 
   // Load categories on component mount
   useEffect(() => {
@@ -64,6 +147,7 @@ const Categories = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await loadCategories();
     setRefreshing(false);
   }, [authState?.user?.id]);
@@ -87,113 +171,81 @@ const Categories = () => {
   };
 
   const handleCreateCategory = () => {
-    Alert.prompt(
-      "Create New Category",
-      "Enter the category name:",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Next",
-          onPress: (name?: string) => {
-            if (name && name.trim()) {
-              showCategoryTypeSelector(name.trim());
-            } else {
-              Alert.alert("Error", "Please enter a valid category name");
-            }
-          },
-        },
-      ],
-      "plain-text"
-    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditingCategory(null);
+    setNewCategory({
+      name: "",
+      type: "expense",
+      color: "#6366F1",
+      icon: "wallet-outline",
+    });
+    setShowCreateModal(true);
   };
 
-  const showCategoryTypeSelector = (name: string) => {
-    Alert.alert("Category Type", `Select the type for "${name}":`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Income",
-        onPress: () => createCategory(name, "income"),
-      },
-      {
-        text: "Expense",
-        onPress: () => createCategory(name, "expense"),
-      },
-    ]);
+  const openEditModal = (category: Category) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditingCategory(category);
+    setNewCategory({
+      name: category.name,
+      type: category.type,
+      color: category.color,
+      icon: category.icon,
+    });
+    setShowCreateModal(true);
   };
 
-  const createCategory = async (name: string, type: "income" | "expense") => {
+  const handleSubmitCategory = async () => {
     if (!authState?.user?.id) return;
 
+    if (!newCategory.name.trim()) {
+      Alert.alert("Error", "Please enter a category name");
+      return;
+    }
+
     try {
-      // Generate random color and select appropriate icon
-      const colors = [
-        "#FF6B6B",
-        "#4ECDC4",
-        "#45B7D1",
-        "#96CEB4",
-        "#FECA57",
-        "#FF9FF3",
-        "#54A0FF",
-        "#5F27CD",
-      ];
-      const icons =
-        type === "expense"
-          ? ["bag", "card", "storefront", "home", "build", "fitness"]
-          : ["cash", "trending-up", "briefcase", "business"];
+      setLoading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+      if (editingCategory) {
+        // Update existing category
+        await CategoryService.updateCategory(editingCategory.id, {
+          name: newCategory.name.trim(),
+          color: newCategory.color,
+          icon: newCategory.icon,
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Success", "Category updated successfully!");
+      } else {
+        // Create new category
+        await CategoryService.createCategory(authState.user.id, {
+          name: newCategory.name.trim(),
+          type: newCategory.type,
+          icon: newCategory.icon,
+          color: newCategory.color,
+          isDefault: false,
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Success", "Category created successfully!");
+      }
 
-      await CategoryService.createCategory(authState.user.id, {
-        name,
-        type,
-        icon: randomIcon,
-        color: randomColor,
-        isDefault: false,
-      });
-
-      Alert.alert("Success", `${name} category created successfully!`);
-      loadCategories(); // Refresh the list
+      setShowCreateModal(false);
+      loadCategories();
     } catch (error) {
-      console.error("❌ Error creating category:", error);
-      Alert.alert("Error", "Failed to create category. Please try again.");
+      console.error("❌ Error with category:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", "Failed to save category. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditCategory = (category: Category) => {
     if (category.isDefault) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Info", "Default categories cannot be edited.");
       return;
     }
-
-    Alert.prompt(
-      "Edit Category",
-      `Edit "${category.name}":`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Update",
-          onPress: (newName?: string) => {
-            if (newName && newName.trim() && newName.trim() !== category.name) {
-              updateCategory(category.id, newName.trim());
-            }
-          },
-        },
-      ],
-      "plain-text",
-      category.name
-    );
-  };
-
-  const updateCategory = async (categoryId: string, newName: string) => {
-    try {
-      await CategoryService.updateCategory(categoryId, { name: newName });
-      Alert.alert("Success", "Category updated successfully!");
-      loadCategories();
-    } catch (error) {
-      console.error("❌ Error updating category:", error);
-      Alert.alert("Error", "Failed to update category. Please try again.");
-    }
+    openEditModal(category);
   };
 
   const handleDeleteCategory = (category: Category) => {
@@ -205,10 +257,12 @@ const Categories = () => {
     );
 
     if (category.isDefault) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Info", "Default categories cannot be deleted.");
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       "Delete Category",
       `Are you sure you want to delete "${category.name}"?`,
@@ -237,11 +291,13 @@ const Categories = () => {
       await CategoryService.deleteCategory(categoryId);
       console.log("✅ Category service deletion successful");
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Success", "Category deleted successfully!");
       console.log("🔄 Reloading categories...");
       await loadCategories();
     } catch (error) {
       console.error("❌ Error deleting category:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -250,68 +306,119 @@ const Categories = () => {
     }
   };
 
-  const CategoryItem = ({ category }: { category: Category }) => (
-    <TouchableOpacity
-      className="flex-row items-center p-4 mx-4 mb-3 bg-white border border-gray-100 shadow-sm rounded-xl"
-      onPress={() => handleEditCategory(category)}
-      activeOpacity={0.7}
+  const CategoryItem = ({
+    category,
+    index,
+  }: {
+    category: Category;
+    index: number;
+  }) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 30 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      delay={index * 100}
     >
-      {/* Category Icon */}
-      <View
-        className="items-center justify-center w-12 h-12 mr-4 rounded-full"
-        style={{ backgroundColor: `${category.color}20` }}
-      >
-        <Ionicons
-          name={category.icon as any}
-          size={24}
-          color={category.color}
-        />
-      </View>
-
-      {/* Category Info */}
-      <View className="flex-1">
-        <View className="flex-row items-center">
-          <Text className="flex-1 text-base font-semibold text-gray-900">
-            {category.name}
-          </Text>
-          {category.isDefault && (
-            <View className="px-2 py-1 bg-blue-100 rounded-full">
-              <Text className="text-xs font-medium text-blue-600">Default</Text>
-            </View>
-          )}
-        </View>
-        <Text className="mt-1 text-sm text-gray-500 capitalize">
-          {category.type} Category
-        </Text>
-      </View>
-
-      {/* Action Button */}
       <TouchableOpacity
-        className="p-2 rounded-lg active:bg-gray-100"
-        onPress={() => {
-          Alert.alert(
-            "Category Actions",
-            `What would you like to do with "${category.name}"?`,
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Edit",
-                onPress: () => handleEditCategory(category),
-                style: "default",
-              },
-              {
-                text: "Delete",
-                onPress: () => handleDeleteCategory(category),
-                style: "destructive",
-              },
-            ]
-          );
+        className="flex-row items-center p-3 mb-3 bg-white shadow-sm rounded-xl"
+        onPress={() => handleEditCategory(category)}
+        activeOpacity={0.8}
+        style={{
+          shadowColor: category.color,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 2,
         }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="ellipsis-horizontal" size={20} color="#6B7280" />
+        {/* Category Icon */}
+        <View
+          className="items-center justify-center w-10 h-10 mr-3 rounded-xl"
+          style={{
+            backgroundColor: category.color,
+            shadowColor: category.color,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+          }}
+        >
+          <Ionicons name={category.icon as any} size={20} color="white" />
+        </View>
+
+        {/* Category Info */}
+        <View className="flex-1">
+          <View className="flex-row items-center">
+            <Text className="flex-1 text-lg font-bold text-gray-900">
+              {category.name}
+            </Text>
+            {category.isDefault && (
+              <View className="px-2 py-1 bg-blue-100 rounded-full">
+                <Text className="text-xs font-medium text-blue-600">
+                  Default
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text
+            className="mt-0.5 text-xs font-medium capitalize"
+            style={{ color: category.color }}
+          >
+            {category.type} Category
+          </Text>
+        </View>
+
+        {/* Action Button */}
+        <TouchableOpacity
+          className="p-2 rounded-lg active:bg-gray-100"
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            Alert.alert(
+              "Category Actions",
+              `What would you like to do with "${category.name}"?`,
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Edit",
+                  onPress: () => handleEditCategory(category),
+                  style: "default",
+                },
+                {
+                  text: "Delete",
+                  onPress: () => handleDeleteCategory(category),
+                  style: "destructive",
+                },
+              ]
+            );
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={18} color="#6B7280" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
+    </MotiView>
+  );
+
+  const CategorySkeleton = () => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      className="p-3 mb-3 bg-white shadow-sm rounded-xl"
+    >
+      <View className="flex-row items-center">
+        <Skeleton colorMode="light" width={40} height={40} radius={16} />
+        <View className="flex-1 ml-3">
+          <Skeleton colorMode="light" width="60%" height={18} radius={4} />
+          <View className="mt-1">
+            <Skeleton colorMode="light" width="40%" height={14} radius={4} />
+          </View>
+        </View>
+        <View className="flex-row">
+          <Skeleton colorMode="light" width={50} height={28} radius={8} />
+          <View className="ml-2">
+            <Skeleton colorMode="light" width={50} height={28} radius={8} />
+          </View>
+        </View>
+      </View>
+    </MotiView>
   );
 
   const FilterButton = ({
@@ -342,10 +449,17 @@ const Categories = () => {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <AppHeader title="Categories" />
-        <View className="items-center justify-center flex-1">
-          <Text className="text-lg text-gray-600">Loading categories...</Text>
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: "#f9fafb" }}
+        edges={["top"]}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+        <AppHeader title="Categories" backgroundColor="#f9fafb" />
+        <View className="px-4 pt-4">
+          {[...Array(5)].map((_, index) => (
+            <CategorySkeleton key={index} />
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -355,15 +469,106 @@ const Categories = () => {
   const incomeCount = categories.filter((c) => c.type === "income").length;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <AppHeader title="Categories" />
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: "#f9fafb" }}
+      edges={["top"]}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <AppHeader title="Categories" backgroundColor="#f9fafb" />
+
+      {/* Header Stats */}
+      <MotiView
+        from={{ opacity: 0, translateY: -20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        className="mx-4 mt-4 mb-2"
+      >
+        <View
+          className="p-4 rounded-2xl"
+          style={{
+            backgroundColor: "#6366F1",
+            shadowColor: "#667eea",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 4,
+          }}
+        >
+          <MotiText
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            delay={200}
+            className="mb-1 text-base font-medium text-white opacity-90"
+          >
+            Total Categories
+          </MotiText>
+          <MotiText
+            from={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            delay={400}
+            className="mb-3 text-2xl font-bold text-white"
+          >
+            {categories.length}
+          </MotiText>
+
+          <View className="flex-row justify-between">
+            <MotiView
+              from={{ opacity: 0, translateX: -20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              delay={600}
+            >
+              <Text className="text-sm text-white opacity-80">Expense</Text>
+              <Text className="text-lg font-semibold text-white">
+                {expenseCount}
+              </Text>
+            </MotiView>
+            <MotiView
+              from={{ opacity: 0, translateX: 20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              delay={800}
+            >
+              <Text className="text-sm text-white opacity-80">Income</Text>
+              <Text className="text-lg font-semibold text-white">
+                {incomeCount}
+              </Text>
+            </MotiView>
+            <MotiView
+              from={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              delay={1000}
+            >
+              <TouchableOpacity
+                onPress={handleCreateCategory}
+                className="flex-row items-center px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={16} color="white" />
+                <Text className="ml-1 text-sm font-semibold text-white">
+                  Add
+                </Text>
+              </TouchableOpacity>
+            </MotiView>
+          </View>
+        </View>
+      </MotiView>
 
       {/* Search and Filter Section */}
-      <View className="pb-4 bg-white border-b border-gray-200">
-        <View className="px-4 pt-4">
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        delay={300}
+        className="mx-4 mb-4"
+      >
+        <View className="p-4 bg-white shadow-sm rounded-2xl">
           {/* Search Bar */}
-          <View className="flex-row items-center px-4 py-3 mb-4 bg-gray-100 rounded-xl">
-            <Ionicons name="search" size={20} color="#6B7280" />
+          <View className="flex-row items-center px-4 py-3 mb-3 bg-gray-50 rounded-xl">
+            <Ionicons name="search" size={18} color="#6B7280" />
             <TextInput
               className="flex-1 ml-3 text-base text-gray-900"
               placeholder="Search categories..."
@@ -373,7 +578,7 @@ const Categories = () => {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={20} color="#6B7280" />
+                <Ionicons name="close-circle" size={18} color="#6B7280" />
               </TouchableOpacity>
             )}
           </View>
@@ -393,14 +598,16 @@ const Categories = () => {
             <FilterButton label="Income" value="income" count={incomeCount} />
           </ScrollView>
         </View>
-      </View>
+      </MotiView>
 
       {/* Categories List */}
       <FlatList
         data={filteredCategories}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <CategoryItem category={item} />}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+        renderItem={({ item, index }) => (
+          <CategoryItem category={item} index={index} />
+        )}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -409,36 +616,245 @@ const Categories = () => {
           />
         }
         ListEmptyComponent={
-          <View className="items-center justify-center py-16">
-            <Ionicons name="folder-open-outline" size={64} color="#D1D5DB" />
-            <Text className="mt-4 text-lg font-medium text-gray-400">
-              {searchQuery ? "No categories found" : "No categories yet"}
-            </Text>
-            {!searchQuery && (
-              <Text className="px-8 mt-2 text-sm text-center text-gray-400">
-                Create your first category to start organizing your expenses and
-                income
-              </Text>
-            )}
-          </View>
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="items-center justify-center py-12 mx-4"
+          >
+            <View
+              className="items-center p-8 bg-white rounded-2xl"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 12,
+                elevation: 2,
+              }}
+            >
+              <Ionicons name="folder-open-outline" size={60} color="#D1D5DB" />
+              <MotiText
+                from={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                delay={200}
+                className="mt-4 text-xl font-bold text-gray-900"
+              >
+                {searchQuery ? "No categories found" : "No categories yet"}
+              </MotiText>
+              {!searchQuery && (
+                <MotiText
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  delay={400}
+                  className="px-4 mt-2 text-sm text-center text-gray-600"
+                >
+                  Create your first category to start organizing your expenses
+                  and income
+                </MotiText>
+              )}
+              {!searchQuery && (
+                <MotiView
+                  from={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  delay={600}
+                >
+                  <TouchableOpacity
+                    onPress={handleCreateCategory}
+                    className="flex-row items-center px-6 py-3 mt-4 rounded-xl"
+                    style={{ backgroundColor: "#6366F1" }}
+                    activeOpacity={0.9}
+                  >
+                    <Ionicons name="add" size={20} color="white" />
+                    <Text className="ml-2 text-base font-semibold text-white">
+                      Create Category
+                    </Text>
+                  </TouchableOpacity>
+                </MotiView>
+              )}
+            </View>
+          </MotiView>
         }
       />
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        className="absolute items-center justify-center bg-blue-500 rounded-full shadow-lg bottom-8 right-6 w-14 h-14 active:bg-blue-600"
-        onPress={handleCreateCategory}
-        activeOpacity={0.8}
-        style={{
-          shadowColor: "#3B82F6",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
+      {/* Create/Edit Category Modal */}
+      <Modal
+        visible={showCreateModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCreateModal(false)}
       >
-        <Ionicons name="add" size={28} color="white" />
-      </TouchableOpacity>
+        <View className="justify-end flex-1 bg-black/50">
+          <MotiView
+            from={{ translateY: 400 }}
+            animate={{ translateY: 0 }}
+            className="p-6 bg-white rounded-t-3xl"
+            style={{ maxHeight: "90%" }}
+          >
+            <View className="flex-row items-center justify-between mb-6">
+              <Text className="text-2xl font-bold text-gray-900">
+                {editingCategory ? "Edit Category" : "Create Category"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCreateModal(false)}
+                className="p-2 bg-gray-100 rounded-full"
+              >
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Category Name */}
+              <View className="mb-4">
+                <Text className="mb-2 text-base font-semibold text-gray-700">
+                  Category Name
+                </Text>
+                <TextInput
+                  value={newCategory.name}
+                  onChangeText={(text) =>
+                    setNewCategory({ ...newCategory, name: text })
+                  }
+                  placeholder="Enter category name"
+                  className="p-4 text-base border border-gray-200 rounded-xl"
+                  style={{ backgroundColor: "#f9fafb" }}
+                />
+              </View>
+
+              {/* Category Type */}
+              <View className="mb-4">
+                <Text className="mb-2 text-base font-semibold text-gray-700">
+                  Category Type
+                </Text>
+                <View className="flex-row gap-3">
+                  {categoryTypes.map((type) => (
+                    <TouchableOpacity
+                      key={type.value}
+                      onPress={() =>
+                        setNewCategory({ ...newCategory, type: type.value })
+                      }
+                      className={`flex-1 flex-row items-center justify-center px-4 py-3 rounded-xl border-2 ${
+                        newCategory.type === type.value
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <Ionicons
+                        name={type.icon as any}
+                        size={20}
+                        color={
+                          newCategory.type === type.value
+                            ? type.color
+                            : "#6B7280"
+                        }
+                      />
+                      <Text
+                        className={`ml-2 font-medium ${
+                          newCategory.type === type.value
+                            ? "text-blue-700"
+                            : "text-gray-700"
+                        }`}
+                      >
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Color Picker */}
+              <View className="mb-4">
+                <Text className="mb-2 text-base font-semibold text-gray-700">
+                  Choose Color
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {availableColors.map((color) => (
+                    <TouchableOpacity
+                      key={color}
+                      onPress={() => setNewCategory({ ...newCategory, color })}
+                      className={`w-10 h-10 rounded-full border-4 ${
+                        newCategory.color === color
+                          ? "border-gray-800"
+                          : "border-gray-200"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {/* Icon Picker */}
+              <View className="mb-6">
+                <Text className="mb-2 text-base font-semibold text-gray-700">
+                  Choose Icon
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {availableIcons.map((icon) => (
+                    <TouchableOpacity
+                      key={icon}
+                      onPress={() => setNewCategory({ ...newCategory, icon })}
+                      className={`w-10 h-10 rounded-full items-center justify-center border-2 ${
+                        newCategory.icon === icon
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 bg-gray-50"
+                      }`}
+                    >
+                      <Ionicons
+                        name={icon as any}
+                        size={18}
+                        color={
+                          newCategory.icon === icon ? "#3B82F6" : "#6B7280"
+                        }
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View className="flex-row gap-3 pt-4">
+                <TouchableOpacity
+                  onPress={() => setShowCreateModal(false)}
+                  className="flex-1 px-6 py-4 bg-gray-100 rounded-xl"
+                >
+                  <Text className="text-base font-semibold text-center text-gray-700">
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSubmitCategory}
+                  className="flex-1 px-6 py-4 rounded-xl"
+                  style={{ backgroundColor: "#6366F1" }}
+                >
+                  <Text className="text-base font-semibold text-center text-white">
+                    {editingCategory ? "Update" : "Create"} Category
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </MotiView>
+        </View>
+      </Modal>
+      {/* Floating Action Button */}
+      <MotiView
+        from={{ scale: 0, rotate: "180deg" }}
+        animate={{ scale: 1, rotate: "0deg" }}
+        delay={1000}
+        className="absolute bottom-6 right-6"
+      >
+        <TouchableOpacity
+          onPress={handleCreateCategory}
+          className="items-center justify-center rounded-full shadow-lg w-14 h-14"
+          style={{
+            backgroundColor: "#6366F1",
+            shadowColor: "#6366F1",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="white" />
+        </TouchableOpacity>
+      </MotiView>
     </SafeAreaView>
   );
 };

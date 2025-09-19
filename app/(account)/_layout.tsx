@@ -5,6 +5,7 @@ export default function AccountLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: "#f9fafb" },
         animation: "slide_from_right",
       }}
     >
