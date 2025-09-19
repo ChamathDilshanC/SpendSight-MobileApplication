@@ -288,7 +288,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 onError={handleProfileImageError}
               >
                 <View
-                  className="items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm relative"
+                  className="relative items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm"
                   style={{
                     backgroundColor: profileImage ? "transparent" : "#10B981",
                     shadowColor: "#10B981",
@@ -306,7 +306,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                         style={{ resizeMode: "cover" }}
                       />
                       {/* Camera icon overlay for edit indication */}
-                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 rounded-full border-2 border-white">
+                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
                         <Ionicons name="camera" size={12} color="white" />
                       </View>
                     </>
@@ -318,7 +318,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                         )}
                       </Text>
                       {/* Camera icon overlay for upload indication */}
-                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 rounded-full border-2 border-white">
+                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
                         <Ionicons name="add" size={12} color="white" />
                       </View>
                     </>
