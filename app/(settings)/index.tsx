@@ -1,5 +1,3 @@
-
-import { useDashboardBackButton } from "../../hooks/useBackButton";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDashboardBackButton } from "../../hooks/useBackButton";
 
 import AppHeader from "../../components/AppHeader";
 import { ProfileImagePicker } from "../../components/ProfileImagePicker";

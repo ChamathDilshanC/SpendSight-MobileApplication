@@ -144,7 +144,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
           {/* Center - Title */}
           <Text
-            className="text-lg font-semibold flex-1 text-center mx-4"
+            className="flex-1 mx-4 text-lg font-semibold text-center"
             style={{ color: textColor }}
             numberOfLines={1}
             ellipsizeMode="tail"
@@ -153,7 +153,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </Text>
 
           {/* Right Side - Optional Component */}
-          <View className="w-10 items-center">
+          <View className="items-center w-10">
             {rightComponent || <View />}
           </View>
         </View>

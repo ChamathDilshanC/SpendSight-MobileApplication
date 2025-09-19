@@ -1,19 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import {
-  Alert,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { TransactionDetails } from "../../components/TransactionDetails";
 import { TransactionForm } from "../../components/TransactionForm";
 import { TransactionList } from "../../components/TransactionList";
 import { useFinance } from "../../context/FinanceContext";
-import { useTabBackButton, useDashboardBackButton } from "../../hooks/useBackButton";
 import { Transaction } from "../../types/finance";
 
 type ViewMode = "list" | "add" | "edit" | "details";
@@ -21,17 +15,12 @@ type ViewMode = "list" | "add" | "edit" | "details";
 export default function TransactionsScreen() {
   const { createTransaction, transactions, refreshData } = useFinance();
 
-
-  // Redirect hardware back button to dashboard
-  useDashboardBackButton(true);
-
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       handleRefresh();
@@ -72,7 +61,6 @@ export default function TransactionsScreen() {
         await createTransaction(transactionData);
         Alert.alert("Success", "Transaction added successfully!");
       } else if (viewMode === "edit" && selectedTransaction) {
-        // Import TransactionService for update functionality
         const { TransactionService } = await import(
           "../../services/TransactionService"
         );
@@ -94,176 +82,194 @@ export default function TransactionsScreen() {
     }
   };
 
+  const handleCancelEdit = () => {
+    setViewMode("list");
+    setSelectedTransaction(null);
+  };
+
+  const handleBackFromDetails = () => {
+    setViewMode("list");
+    setSelectedTransaction(null);
+  };
+
   const handleDeleteTransaction = async () => {
-    await refreshData();
-    setViewMode("list");
-    setSelectedTransaction(null);
+    if (!selectedTransaction) return;
+
+    Alert.alert(
+      "Delete Transaction",
+      "Are you sure you want to delete this transaction?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { TransactionService } = await import(
+                "../../services/TransactionService"
+              );
+              await TransactionService.deleteTransaction(
+                selectedTransaction.id
+              );
+              await refreshData();
+              setViewMode("list");
+              setSelectedTransaction(null);
+              Alert.alert("Success", "Transaction deleted successfully!");
+            } catch (error) {
+              console.error("Error deleting transaction:", error);
+              Alert.alert("Error", "Failed to delete transaction");
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const handleCancel = () => {
-    setViewMode("list");
-    setSelectedTransaction(null);
-  };
-
-  const handleBack = () => {
-    setViewMode("list");
-    setSelectedTransaction(null);
-  };
-
-  const renderHeader = () => {
+  const getHeaderTitle = () => {
     switch (viewMode) {
       case "add":
-        return (
-          <View className="flex-row items-center justify-between px-4 py-4 bg-white border-b border-gray-200 shadow-sm">
-            <TouchableOpacity
-              onPress={handleCancel}
-              className="items-center justify-center w-10 h-10"
-            >
-              <Ionicons name="close" size={24} color="#3b82f6" />
-            </TouchableOpacity>
-            <Text className="text-xl font-bold text-gray-900">
-              Add Transaction
-            </Text>
-            <View className="w-10 h-10" />
-          </View>
-        );
+        return "Add Transaction";
       case "edit":
-        return (
-          <View className="flex-row items-center justify-between px-4 py-4 bg-white border-b border-gray-200 shadow-sm">
-            <TouchableOpacity
-              onPress={handleCancel}
-              className="items-center justify-center w-10 h-10"
-            >
-              <Ionicons name="close" size={24} color="#3b82f6" />
-            </TouchableOpacity>
-            <Text className="text-xl font-bold text-gray-900">
-              Edit Transaction
-            </Text>
-            <View className="w-10 h-10" />
-          </View>
-        );
+        return "Edit Transaction";
       case "details":
-        return null;
+        return "Transaction Details";
       default:
-        return <AppHeader title="Transactions" />;
+        return "Transactions";
     }
   };
 
-  const renderContent = () => {
-    switch (viewMode) {
-      case "add":
-        return (
-          <TransactionForm
-            onSave={handleSaveTransaction}
-            onCancel={handleCancel}
-            isEditing={false}
-          />
-        );
-      case "edit":
-        return selectedTransaction ? (
-          <TransactionForm
-            transaction={selectedTransaction}
-            onSave={handleSaveTransaction}
-            onCancel={handleCancel}
-            isEditing={true}
-          />
-        ) : null;
-      case "details":
-        return selectedTransaction ? (
-          <TransactionDetails
-            transaction={selectedTransaction}
-            onEdit={handleEditTransaction}
-            onDelete={handleDeleteTransaction}
-            onBack={handleBack}
-          />
-        ) : null;
-      default:
-        return (
-          <>
-            {transactions.length === 0 ? (
-              <View className="items-center justify-center flex-1 px-8">
-                <Ionicons name="receipt-outline" size={80} color="#d1d5db" />
-                <Text className="mt-6 mb-3 text-2xl font-bold text-center text-gray-900">
-                  No Transactions Yet
-                </Text>
-                <Text className="mb-8 text-base leading-6 text-center text-gray-500">
-                  Start tracking your expenses, income, and transfers by adding
-                  your first transaction.
-                </Text>
-                <TouchableOpacity
-                  className="flex-row items-center px-6 py-4 bg-blue-500 rounded-xl"
-                  onPress={handleAddTransaction}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text className="ml-2 text-base font-semibold text-white">
-                    Add Your First Transaction
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                {/* Summary Cards */}
-                <View className="flex-row gap-3 px-4 py-4">
-                  <View className="items-center flex-1 p-4 bg-white shadow-sm rounded-xl">
-                    <Text className="mb-1 text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      Total Transactions
-                    </Text>
-                    <Text className="text-2xl font-bold text-blue-500">
-                      {transactions.length}
-                    </Text>
-                  </View>
-                  <View className="items-center flex-1 p-4 bg-white shadow-sm rounded-xl">
-                    <Text className="mb-1 text-xs font-medium tracking-wider text-gray-500 uppercase">
-                      This Month
-                    </Text>
-                    <Text className="text-2xl font-bold text-blue-500">
-                      {
-                        transactions.filter((t) => {
-                          const now = new Date();
-                          return (
-                            t.date.getMonth() === now.getMonth() &&
-                            t.date.getFullYear() === now.getFullYear()
-                          );
-                        }).length
-                      }
-                    </Text>
-                  </View>
-                </View>
+  const getHeaderRightComponent = () => {
+    if (viewMode === "list") {
+      return (
+        <TouchableOpacity
+          onPress={handleAddTransaction}
+          className="p-2 rounded-xl active:bg-gray-100 active:scale-95"
+          style={{
+            shadowColor: "#6366F1",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          }}
+        >
+          <Ionicons name="add" size={24} color="#6366F1" />
+        </TouchableOpacity>
+      );
+    }
 
-                {/* Transaction List */}
-                <TransactionList
-                  onTransactionPress={handleTransactionPress}
-                  refreshing={isRefreshing}
-                  onRefresh={handleRefresh}
-                />
-              </>
-            )}
-          </>
-        );
+    if (viewMode === "details") {
+      return (
+        <View className="flex-row space-x-2">
+          <TouchableOpacity
+            onPress={handleEditTransaction}
+            className="p-2 bg-blue-50 rounded-xl active:bg-blue-100 active:scale-95"
+            style={{
+              shadowColor: "#3B82F6",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}
+          >
+            <Ionicons name="pencil" size={20} color="#3B82F6" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDeleteTransaction}
+            className="p-2 bg-red-50 rounded-xl active:bg-red-100 active:scale-95"
+            style={{
+              shadowColor: "#EF4444",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}
+          >
+            <Ionicons name="trash" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const shouldShowBackButton = viewMode !== "list";
+
+  const handleBackPress = () => {
+    if (viewMode === "details") {
+      handleBackFromDetails();
+    } else if (viewMode === "add" || viewMode === "edit") {
+      handleCancelEdit();
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: "#f9fafb" }}
+        edges={["top"]}
+      >
+        <AppHeader
+          title={getHeaderTitle()}
+          showBackButton={shouldShowBackButton}
+          onBackPress={handleBackPress}
+          rightComponent={getHeaderRightComponent()}
+          backgroundColor="#f9fafb"
+        />
 
-      {renderHeader()}
+        <View className="flex-1" style={{ backgroundColor: "#f9fafb" }}>
+          {viewMode === "list" && (
+            <TransactionList
+              onTransactionPress={handleTransactionPress}
+              onRefresh={handleRefresh}
+              refreshing={isRefreshing}
+            />
+          )}
 
-      <View className="flex-1">{renderContent()}</View>
+          {(viewMode === "add" || viewMode === "edit") && (
+            <View className="flex-1" style={{ backgroundColor: "#f9fafb" }}>
+              <TransactionForm
+                transaction={selectedTransaction || undefined}
+                onSave={handleSaveTransaction}
+                onCancel={handleCancelEdit}
+                isEditing={viewMode === "edit"}
+              />
+            </View>
+          )}
 
-      {/* Floating Action Button for List View */}
-      {viewMode === "list" && transactions.length > 0 && (
+          {viewMode === "details" && selectedTransaction && (
+            <View className="flex-1" style={{ backgroundColor: "#f9fafb" }}>
+              <TransactionDetails
+                transaction={selectedTransaction}
+                onEdit={handleEditTransaction}
+                onDelete={handleDeleteTransaction}
+                onBack={handleBackFromDetails}
+              />
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
+
+      {/* Floating Action Button */}
+      <View className="absolute bottom-10 right-6">
         <TouchableOpacity
-          className="absolute items-center justify-center w-16 h-16 bg-blue-500 rounded-full shadow-lg bottom-20 right-6"
           onPress={handleAddTransaction}
+          className="items-center justify-center rounded-full shadow-lg w-14 h-14 active:scale-95"
+          style={{
+            backgroundColor: "#6366F1",
+            shadowColor: "#6366F1",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+          activeOpacity={0.8}
         >
-          <Ionicons name="add" size={32} color="#fff" />
+          <Ionicons name="add" size={28} color="white" />
         </TouchableOpacity>
-      )}
-    </SafeAreaView>
+      </View>
+    </>
   );
 }
