@@ -16,6 +16,18 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 40;
 const SWIPE_THRESHOLD = 50;
 
+// Faster spring configuration
+const FAST_SPRING_CONFIG = {
+  damping: 20, // Increased from default ~10
+  stiffness: 300, // Increased from default ~100
+  mass: 0.8, // Reduced from default 1
+};
+
+// Alternative: Use timing for even faster animations
+const FAST_TIMING_CONFIG = {
+  duration: 200, // Fast timing animation
+};
+
 interface AnimatedAccountCardProps {
   accounts: Account[];
   currentIndex: number;
@@ -32,14 +44,19 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    translateX.value = withSpring(0);
-    scale.value = withSpring(1);
-    opacity.value = withTiming(1);
+    // Faster reset animations
+    translateX.value = withSpring(0, FAST_SPRING_CONFIG);
+    scale.value = withSpring(1, FAST_SPRING_CONFIG);
+    opacity.value = withTiming(1, { duration: 150 });
   }, [currentIndex]);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      scale.value = withSpring(0.95);
+      // Faster scale animation
+      scale.value = withSpring(0.95, {
+        damping: 15,
+        stiffness: 200,
+      });
     })
     .onUpdate((event) => {
       translateX.value = event.translationX;
@@ -53,7 +70,11 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
       }
     })
     .onEnd((event) => {
-      scale.value = withSpring(1);
+      // Faster scale back animation
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 200,
+      });
 
       const shouldSwipeLeft =
         event.translationX < -SWIPE_THRESHOLD &&
@@ -62,15 +83,18 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
         event.translationX > SWIPE_THRESHOLD && currentIndex > 0;
 
       if (shouldSwipeLeft) {
-        translateX.value = withSpring(-CARD_WIDTH, {}, () => {
+        // Use timing for fastest swipe animation
+        translateX.value = withTiming(-CARD_WIDTH, FAST_TIMING_CONFIG, () => {
           runOnJS(onSwipe)(currentIndex + 1);
         });
       } else if (shouldSwipeRight) {
-        translateX.value = withSpring(CARD_WIDTH, {}, () => {
+        // Use timing for fastest swipe animation
+        translateX.value = withTiming(CARD_WIDTH, FAST_TIMING_CONFIG, () => {
           runOnJS(onSwipe)(currentIndex - 1);
         });
       } else {
-        translateX.value = withSpring(0);
+        // Faster spring back to center
+        translateX.value = withSpring(0, FAST_SPRING_CONFIG);
       }
     });
 
@@ -83,22 +107,31 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
     return `$${amount.toFixed(2)}`;
   };
 
-  const getAccountIcon = (type: string): string => {
-    switch (type) {
+  const getAccountIcon = (account: Account): string => {
+    // Use the account's custom icon if available, otherwise fallback to type-based icon
+    if (account.icon) {
+      return account.icon;
+    }
+
+    switch (account.type) {
       case "main":
-        return "card";
+        return "card-outline";
       case "savings":
-        return "trending-up";
+        return "trending-up-outline";
       case "expenses":
-        return "trending-down";
+        return "trending-down-outline";
       default:
-        return "wallet";
+        return "wallet-outline";
     }
   };
 
-  const getAccountColor = (type: string, color: string): string => {
-    if (color) return color;
-    switch (type) {
+  const getAccountColor = (account: Account): string => {
+    // Use the account's custom color if available, otherwise fallback to type-based color
+    if (account.color) {
+      return account.color;
+    }
+
+    switch (account.type) {
       case "main":
         return "#3B82F6";
       case "savings":
@@ -129,15 +162,13 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             transition={{
               type: "spring",
-              damping: 15,
-              stiffness: 150,
+              damping: 15, // Increased from 8
+              stiffness: 250, // Increased from 150
+              mass: 0.8, // Added for faster animation
             }}
             className="p-6 mx-2 shadow-lg bg-gradient-to-br rounded-2xl"
             style={{
-              backgroundColor: getAccountColor(
-                currentAccount.type,
-                currentAccount.color
-              ),
+              backgroundColor: getAccountColor(currentAccount),
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.15,
               shadowRadius: 20,
@@ -149,7 +180,7 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
               <View className="flex-row items-center">
                 <View className="items-center justify-center w-10 h-10 bg-white rounded-full bg-opacity-20">
                   <Ionicons
-                    name={getAccountIcon(currentAccount.type) as any}
+                    name={getAccountIcon(currentAccount) as any}
                     size={20}
                     color="white"
                   />
@@ -210,7 +241,8 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
             }}
             transition={{
               type: "spring",
-              damping: 15,
+              damping: 20, // Increased from 15
+              stiffness: 200, // Added for faster animation
             }}
             className={`w-2 h-2 rounded-full ${
               index === currentIndex ? "bg-blue-500" : "bg-gray-300"
@@ -226,8 +258,8 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
           animate={{ opacity: 0.7, translateY: 0 }}
           transition={{
             type: "timing",
-            duration: 1000,
-            delay: 500,
+            duration: 300, // Reduced from 500
+            delay: 50,
           }}
           className="items-center mt-3"
         >
