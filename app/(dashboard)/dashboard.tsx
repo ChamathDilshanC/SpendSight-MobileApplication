@@ -64,7 +64,7 @@ const Dashboard = () => {
             // Small delay to ensure UI is ready
             setTimeout(() => {
               showBudgetPrompt();
-            }, 500);
+            }, 1000);
           } else {
             console.log("✅ Existing user with accounts, no setup needed");
           }
@@ -82,22 +82,44 @@ const Dashboard = () => {
   }, [authState?.user?.id, authState?.isLoading]);
 
   const showBudgetPrompt = () => {
-    Alert.prompt(
+    Alert.alert(
       "Welcome to SpendSight! 🎉",
-      "Let's set up your accounts with smart budget allocation.\n\nEnter your monthly salary/budget:",
+      "Let's set up your accounts with smart budget allocation.\n\nWould you like to enter your monthly salary/budget to get started?",
+      [
+        {
+          text: "Skip for Now",
+          style: "cancel",
+          onPress: () => {
+            console.log("💡 User skipped budget setup, will show in accounts");
+          },
+        },
+        {
+          text: "Set Up Budget",
+          onPress: () => {
+            promptForBudgetAmount();
+          },
+        },
+      ]
+    );
+  };
+
+  const promptForBudgetAmount = () => {
+    Alert.prompt(
+      "Budget Setup",
+      "Enter your monthly salary/budget:",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Set Up",
+          text: "Continue",
           onPress: (text: string | undefined) => {
             if (text && text.trim()) {
               handleBudgetSetup(text.trim());
             } else {
               Alert.alert("Error", "Please enter a valid amount", [
-                { text: "Try Again", onPress: () => showBudgetPrompt() },
+                { text: "Try Again", onPress: () => promptForBudgetAmount() },
                 { text: "Cancel", style: "cancel" },
               ]);
             }
@@ -119,7 +141,7 @@ const Dashboard = () => {
     const budget = parseFloat(budgetInput);
     if (budget <= 0 || isNaN(budget)) {
       Alert.alert("Error", "Please enter a valid budget amount", [
-        { text: "Try Again", onPress: () => showBudgetPrompt() },
+        { text: "Try Again", onPress: () => promptForBudgetAmount() },
         { text: "Cancel", style: "cancel" },
       ]);
       return;
@@ -127,7 +149,7 @@ const Dashboard = () => {
 
     // Show allocation preview before confirming
     Alert.alert(
-      "Comprehensive Budget Allocation Preview",
+      "Budget Allocation Preview",
       `Your $${budget.toFixed(0)} will be allocated across 6 smart accounts:\n\n• Main Account (35%): $${(budget * 0.35).toFixed(0)}\n• Savings Account (20%): $${(budget * 0.2).toFixed(0)}\n• Expenses Account (25%): $${(budget * 0.25).toFixed(0)}\n• Investment Account (10%): $${(budget * 0.1).toFixed(0)}\n• Emergency Fund (5%): $${(budget * 0.05).toFixed(0)}\n• Goals & Dreams (5%): $${(budget * 0.05).toFixed(0)}\n\nProceed with this allocation?`,
       [
         { text: "Cancel", style: "cancel" },
@@ -158,7 +180,7 @@ const Dashboard = () => {
         "Error",
         "Failed to set up your accounts. Please try again.",
         [
-          { text: "Try Again", onPress: () => showBudgetPrompt() },
+          { text: "Try Again", onPress: () => promptForBudgetAmount() },
           { text: "Cancel", style: "cancel" },
         ]
       );
@@ -301,12 +323,12 @@ const Dashboard = () => {
               duration: 600,
               delay: 200,
             }}
-            className="px-5 pt-6 pb-4"
+            className="px-5 pt-6 pb-4 "
           >
-            <Text className="text-2xl font-bold text-gray-900">
+            <Text className="pb-1 pl-4 text-2xl font-bold text-gray-900">
               Welcome back,
             </Text>
-            <Text className="text-base text-gray-600">
+            <Text className="pb-2 pl-4 text-base text-gray-600">
               {authState?.user?.fullName &&
               typeof authState.user.fullName === "string"
                 ? authState.user.fullName
@@ -359,7 +381,7 @@ const Dashboard = () => {
             }}
             className="px-5 mt-8"
           >
-            <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center justify-between pl-4 mb-4">
               <Text className="text-lg font-semibold text-gray-900">
                 Recent Activity
               </Text>
@@ -367,7 +389,7 @@ const Dashboard = () => {
                 onPress={() => handleNavigationShortcut("/(transaction)")}
                 activeOpacity={0.7}
               >
-                <Text className="text-sm font-medium text-blue-600">
+                <Text className="pr-4 text-sm font-medium text-blue-600">
                   View All
                 </Text>
               </TouchableOpacity>
