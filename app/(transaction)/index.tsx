@@ -142,23 +142,6 @@ export default function TransactionsScreen() {
   };
 
   const getHeaderRightComponent = () => {
-    if (viewMode === "list") {
-      return (
-        <TouchableOpacity
-          onPress={handleAddTransaction}
-          className="p-2 rounded-xl active:bg-gray-100 active:scale-95"
-          style={{
-            shadowColor: "#6366F1",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-          }}
-        >
-          <Ionicons name="add" size={24} color="#6366F1" />
-        </TouchableOpacity>
-      );
-    }
-
     if (viewMode === "details") {
       return (
         <View className="flex-row space-x-2">
@@ -252,24 +235,26 @@ export default function TransactionsScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Floating Action Button */}
-      <View className="absolute bottom-10 right-6">
-        <TouchableOpacity
-          onPress={handleAddTransaction}
-          className="items-center justify-center rounded-full shadow-lg w-14 h-14 active:scale-95"
-          style={{
-            backgroundColor: "#6366F1",
-            shadowColor: "#6366F1",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
+      {/* Floating Action Button - Only show in list and details view */}
+      {(viewMode === "list" || viewMode === "details") && (
+        <View className="absolute bottom-10 right-6">
+          <TouchableOpacity
+            onPress={handleAddTransaction}
+            className="items-center justify-center rounded-full shadow-lg w-14 h-14 active:scale-95"
+            style={{
+              backgroundColor: "#6366F1",
+              shadowColor: "#6366F1",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={28} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
 }

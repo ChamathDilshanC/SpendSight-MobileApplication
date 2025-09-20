@@ -346,53 +346,62 @@ const Categories = () => {
 
         {/* Category Info */}
         <View className="flex-1">
-          <View className="flex-row items-center">
-            <Text className="flex-1 text-lg font-bold text-gray-900">
-              {category.name}
-            </Text>
-            {category.isDefault && (
-              <View className="px-2 py-1 bg-blue-100 rounded-full">
-                <Text className="text-xs font-medium text-blue-600">
-                  Default
-                </Text>
-              </View>
-            )}
-          </View>
-          <Text
-            className="mt-0.5 text-xs font-medium capitalize"
-            style={{ color: category.color }}
-          >
-            {category.type} Category
-          </Text>
-        </View>
+          <View className="flex-row items-start justify-between">
+            <View className="flex-1">
+              <Text className="text-lg font-bold text-gray-900">
+                {category.name}
+              </Text>
+              <Text
+                className="mt-0.5 text-xs font-medium capitalize"
+                style={{ color: category.color }}
+              >
+                {category.type} Category
+              </Text>
+            </View>
 
-        {/* Action Button */}
-        <TouchableOpacity
-          className="p-2 rounded-lg active:bg-gray-100"
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            Alert.alert(
-              "Category Actions",
-              `What would you like to do with "${category.name}"?`,
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Edit",
-                  onPress: () => handleEditCategory(category),
-                  style: "default",
-                },
-                {
-                  text: "Delete",
-                  onPress: () => handleDeleteCategory(category),
-                  style: "destructive",
-                },
-              ]
-            );
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="ellipsis-horizontal" size={18} color="#6B7280" />
-        </TouchableOpacity>
+            <View className="flex-row items-center ml-3 space-x-2">
+              {category.isDefault && (
+                <View className="flex-row items-center px-2 py-1 bg-blue-100 rounded-full">
+                  <Text className="text-xs font-medium text-blue-600">
+                    Default
+                  </Text>
+                </View>
+              )}
+
+              {/* Action Button */}
+              <TouchableOpacity
+                className="p-2 ml-2 rounded-lg active:bg-gray-100"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Alert.alert(
+                    "Category Actions",
+                    `What would you like to do with "${category.name}"?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Edit",
+                        onPress: () => handleEditCategory(category),
+                        style: "default",
+                      },
+                      {
+                        text: "Delete",
+                        onPress: () => handleDeleteCategory(category),
+                        style: "destructive",
+                      },
+                    ]
+                  );
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={18}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </TouchableOpacity>
     </MotiView>
   );
