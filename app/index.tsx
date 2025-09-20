@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
 import { NavigationManager } from "../utils/navigationManager";
 
@@ -92,13 +93,18 @@ export default function App() {
   };
 
   return (
-    <>
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: "#1a1a1a" }}
+      edges={["top"]}
+    >
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-      <View className="flex-1 bg-[#1a1a1a]">
-        <View className="flex-1 items-center justify-center bg-[#1a1a1a]">
+
+      <View className="flex-1" style={{ backgroundColor: "#1a1a1a" }}>
+        <View className="items-center justify-center flex-1">
           {/* Main Content - Centered with slide animation */}
           <MotiView
-            className="items-center justify-center flex-1 bg-[#1a1a1a]"
+            className="items-center justify-center flex-1"
             animate={{
               translateX: isNavigating ? -400 : 0,
               opacity: isNavigating ? 0 : 1,
@@ -121,7 +127,14 @@ export default function App() {
               <TouchableOpacity
                 onPress={handleGetStarted}
                 activeOpacity={0.8}
-                className="items-center justify-center mb-8"
+                className="items-center justify-center p-4 mb-8 rounded-3xl"
+                style={{
+                  shadowColor: "#6366F1",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}
               >
                 <MotiView
                   from={{ scale: 1 }}
@@ -155,7 +168,16 @@ export default function App() {
                 className="items-center"
               >
                 {/* Connection Indicator */}
-                <View className="flex-row items-center mb-3">
+                <View
+                  className="flex-row items-center px-4 py-3 mb-4 bg-gray-900/50 rounded-2xl backdrop-blur-sm"
+                  style={{
+                    shadowColor: "#000000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
                   <MotiView
                     animate={{
                       scale: [1, 1.2, 1],
@@ -173,16 +195,28 @@ export default function App() {
                         loop: !!(isConnected && imagesLoaded),
                       },
                     }}
-                    className={`w-3 h-3 rounded-full mr-3 ${
+                    className={`w-4 h-4 rounded-full mr-3 ${
                       isConnected === null || !imagesLoaded
                         ? "bg-gray-400"
                         : isConnected
                           ? "bg-green-500"
                           : "bg-red-500"
                     }`}
+                    style={{
+                      shadowColor:
+                        isConnected === null || !imagesLoaded
+                          ? "#9CA3AF"
+                          : isConnected
+                            ? "#10B981"
+                            : "#EF4444",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 4,
+                      elevation: 4,
+                    }}
                   />
                   <Text
-                    className={`text-base font-medium ${
+                    className={`text-base font-semibold ${
                       isConnected === null || !imagesLoaded
                         ? "text-gray-400"
                         : isConnected
@@ -208,10 +242,18 @@ export default function App() {
                     transition={{
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
+                    className="px-6 py-3 bg-gray-800/60 rounded-2xl backdrop-blur-sm"
+                    style={{
+                      shadowColor: "#6366F1",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
                   >
                     <Text className="text-sm text-center text-gray-300">
-                      <Text className="text-[#0077CC]">Tap</Text> the logo to
-                      get started
+                      <Text className="text-[#6366F1] font-semibold">Tap</Text>{" "}
+                      the logo to get started
                     </Text>
                   </MotiView>
                 )}
@@ -223,8 +265,16 @@ export default function App() {
                     transition={{
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
+                    className="px-6 py-3 border bg-red-900/40 rounded-2xl backdrop-blur-sm border-red-500/30"
+                    style={{
+                      shadowColor: "#EF4444",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
                   >
-                    <Text className="text-sm text-center text-red-400 max-w-64">
+                    <Text className="text-sm font-medium text-center text-red-300 max-w-64">
                       Please check your internet connection to continue
                     </Text>
                   </MotiView>
@@ -237,8 +287,16 @@ export default function App() {
                     transition={{
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
+                    className="px-6 py-3 border bg-gray-800/40 rounded-2xl backdrop-blur-sm border-gray-600/30"
+                    style={{
+                      shadowColor: "#6B7280",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
                   >
-                    <Text className="text-sm text-center text-gray-400 max-w-64">
+                    <Text className="text-sm font-medium text-center text-gray-400 max-w-64">
                       Preparing your experience...
                     </Text>
                   </MotiView>
@@ -246,11 +304,26 @@ export default function App() {
               </MotiView>
             </MotiView>
           </MotiView>
-          <View className="absolute items-center bottom-20">
-            <Text className="text-xs text-gray-600">SpendSight v1.0</Text>
-            <Text className="mt-1 text-xs text-gray-600">
-              All rights reserved By Developer : Chamath Dilshan
-            </Text>
+
+          {/* Footer Info */}
+          <View className="absolute items-center px-4 bottom-20">
+            <View
+              className="px-4 py-2 bg-gray-900/50 rounded-2xl backdrop-blur-sm"
+              style={{
+                shadowColor: "#000000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              <Text className="text-xs font-medium text-gray-500">
+                SpendSight v1.0
+              </Text>
+              <Text className="mt-1 text-xs text-center text-gray-600">
+                All rights reserved By Developer : Chamath Dilshan
+              </Text>
+            </View>
           </View>
 
           {/* Hidden image for preloading */}
@@ -262,6 +335,6 @@ export default function App() {
           />
         </View>
       </View>
-    </>
+    </SafeAreaView>
   );
 }
