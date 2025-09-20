@@ -3,25 +3,27 @@ import { Stack, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   Dimensions,
+  RefreshControl,
   ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { LineChart, PieChart } from "react-native-chart-kit";
+import { BarChart, PieChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
 
 const { width: screenWidth } = Dimensions.get("window");
+
 const chartConfig = {
   backgroundColor: "#ffffff",
   backgroundGradientFrom: "#ffffff",
   backgroundGradientTo: "#ffffff",
   decimalPlaces: 0,
   color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
   style: {
     borderRadius: 16,
   },
@@ -35,37 +37,13 @@ const chartConfig = {
 type TimeFilter = "week" | "month" | "3months" | "year";
 
 export default function HistoryScreen() {
-  const financeContext = useFinance();
+  const { transactions, categories, refreshData } = useFinance();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Early return for context safety - but keep hooks consistent
-  if (!financeContext) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50" edges={["top"]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-        <Stack.Screen options={{ headerShown: false }} />
-        <AppHeader title="History & Analytics" />
-        <View className="items-center justify-center flex-1">
-          <Text className="text-gray-500">Loading finance data...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const { transactions = [], categories = [], refreshData } = financeContext;
-
-  // Hooks must be called consistently - after context check but before any other logic
   useFocusEffect(
     useCallback(() => {
-      const handleRefreshData = async () => {
-        try {
-          await handleRefresh();
-        } catch (error) {
-          console.error("Error in useFocusEffect:", error);
-        }
-      };
-      handleRefreshData();
+      handleRefresh();
     }, [])
   );
 
@@ -80,467 +58,445 @@ export default function HistoryScreen() {
     }
   };
 
-  const handleTimeFilterChange = useCallback((newFilter: TimeFilter) => {
-    try {
-      setTimeFilter(newFilter);
-    } catch (error) {
-      console.error("Error changing time filter:", error);
-    }
-  }, []);
-
+  // Filter transactions based on selected time period
   const filteredTransactions = useMemo(() => {
-    try {
-      if (!transactions || transactions.length === 0) {
-        return [];
-      }
+    const now = new Date();
+    const startDate = new Date();
 
-      const now = new Date();
-      const filterDate = new Date();
-
-      switch (timeFilter) {
-        case "week":
-          filterDate.setDate(now.getDate() - 7);
-          break;
-        case "month":
-          filterDate.setMonth(now.getMonth() - 1);
-          break;
-        case "3months":
-          filterDate.setMonth(now.getMonth() - 3);
-          break;
-        case "year":
-          filterDate.setFullYear(now.getFullYear() - 1);
-          break;
-      }
-
-      return transactions.filter(
-        (transaction) => new Date(transaction.date) >= filterDate
-      );
-    } catch (error) {
-      console.error("Error filtering transactions:", error);
-      return [];
+    switch (timeFilter) {
+      case "week":
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case "3months":
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case "year":
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
     }
+
+    return transactions.filter((transaction) => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= startDate && transactionDate <= now;
+    });
   }, [transactions, timeFilter]);
 
-  const expensesByCategory = useMemo(() => {
-    try {
-      if (!filteredTransactions || filteredTransactions.length === 0) {
-        return [];
+  // Calculate summary statistics
+  const analytics = useMemo(() => {
+    const totalIncome = filteredTransactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpense = filteredTransactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const netAmount = totalIncome - totalExpense;
+
+    // Category-wise expenses for pie chart
+    const categoryExpenses = filteredTransactions
+      .filter((t) => t.type === "expense")
+      .reduce(
+        (acc, transaction) => {
+          const categoryName =
+            categories.find((cat) => cat.id === transaction.categoryId)?.name ||
+            "Other";
+          acc[categoryName] = (acc[categoryName] || 0) + transaction.amount;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+    // Monthly data for bar chart (last 6 months/periods)
+    const periods = [];
+    const periodIncome = [];
+    const periodExpense = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const periodStart = new Date();
+      const periodEnd = new Date();
+
+      if (timeFilter === "week") {
+        periodStart.setDate(periodStart.getDate() - (i + 1) * 7);
+        periodEnd.setDate(periodEnd.getDate() - i * 7);
+        periods.push(`W${6 - i}`);
+      } else {
+        periodStart.setMonth(periodStart.getMonth() - (i + 1));
+        periodEnd.setMonth(periodEnd.getMonth() - i);
+        periods.push(periodStart.toLocaleDateString("en", { month: "short" }));
       }
 
-      const expenses = filteredTransactions.filter((t) => t.type === "expense");
-      const categoryTotals: { [key: string]: number } = {};
-
-      expenses.forEach((transaction) => {
-        const category = categories.find(
-          (cat) => cat.id === transaction.categoryId
-        );
-        const categoryName = category?.name || "Other";
-        categoryTotals[categoryName] =
-          (categoryTotals[categoryName] || 0) + Math.abs(transaction.amount);
+      const periodTransactions = transactions.filter((t) => {
+        const tDate = new Date(t.date);
+        return tDate >= periodStart && tDate < periodEnd;
       });
 
-      return Object.entries(categoryTotals)
-        .map(([name, amount]) => ({
-          name,
-          amount,
-          color: categories.find((c) => c.name === name)?.color || "#8B5CF6",
-          legendFontColor: "#7F7F7F",
-          legendFontSize: 12,
-        }))
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 8);
-    } catch (error) {
-      console.error("Error calculating expenses by category:", error);
-      return [];
+      periodIncome.push(
+        periodTransactions
+          .filter((t) => t.type === "income")
+          .reduce((sum, t) => sum + t.amount, 0)
+      );
+
+      periodExpense.push(
+        periodTransactions
+          .filter((t) => t.type === "expense")
+          .reduce((sum, t) => sum + t.amount, 0)
+      );
     }
-  }, [filteredTransactions, categories]);
-
-  const monthlyTrends = useMemo(() => {
-    const monthlyData: {
-      [key: string]: { income: number; expenses: number };
-    } = {};
-
-    filteredTransactions.forEach((transaction) => {
-      const date = new Date(transaction.date);
-      const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
-
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { income: 0, expenses: 0 };
-      }
-
-      if (transaction.type === "income") {
-        monthlyData[monthKey].income += transaction.amount;
-      } else {
-        monthlyData[monthKey].expenses += Math.abs(transaction.amount);
-      }
-    });
-
-    const sortedMonths = Object.keys(monthlyData).sort();
-    const last6Months = sortedMonths.slice(-6);
 
     return {
-      labels: last6Months.map((month) => {
-        const [year, monthNum] = month.split("-");
-        const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-        return date.toLocaleDateString("en-US", { month: "short" });
-      }),
-      datasets: [
-        {
-          data: last6Months.map((month) => monthlyData[month]?.income || 0),
-          color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
-          strokeWidth: 2,
-        },
-        {
-          data: last6Months.map((month) => monthlyData[month]?.expenses || 0),
-          color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-          strokeWidth: 2,
-        },
-      ],
+      totalIncome,
+      totalExpense,
+      netAmount,
+      categoryExpenses,
+      periods,
+      periodIncome,
+      periodExpense,
     };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, categories, transactions, timeFilter]);
 
-  const summaryStats = useMemo(() => {
-    try {
-      if (!filteredTransactions || filteredTransactions.length === 0) {
-        return {
-          income: 0,
-          expenses: 0,
-          netAmount: 0,
-          transactionCount: 0,
-        };
-      }
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
-      const income = filteredTransactions
-        .filter((t) => t.type === "income")
-        .reduce((sum, t) => sum + t.amount, 0);
+  // Prepare pie chart data
+  const pieChartData = Object.entries(analytics.categoryExpenses)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6) // Top 6 categories
+    .map(([name, amount], index) => ({
+      name,
+      amount,
+      color: ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899"][
+        index
+      ],
+      legendFontColor: "#374151",
+      legendFontSize: 12,
+    }));
 
-      const expenses = filteredTransactions
-        .filter((t) => t.type === "expense")
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-      const netAmount = income - expenses;
-
-      return {
-        income,
-        expenses,
-        netAmount,
-        transactionCount: filteredTransactions.length,
-      };
-    } catch (error) {
-      console.error("Error calculating summary stats:", error);
-      return {
-        income: 0,
-        expenses: 0,
-        netAmount: 0,
-        transactionCount: 0,
-      };
-    }
-  }, [filteredTransactions]);
-
-  const formatCurrency = useCallback((amount: number) => {
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-    } catch (error) {
-      console.error("Error formatting currency:", error);
-      return `$${amount.toFixed(2)}`;
-    }
-  }, []);
-
-  const timeFilterOptions = [
-    { value: "week" as const, label: "Week" },
-    { value: "month" as const, label: "Month" },
-    { value: "3months" as const, label: "3 Months" },
-    { value: "year" as const, label: "Year" },
-  ];
+  // Prepare bar chart data
+  const barChartData = {
+    labels: analytics.periods,
+    datasets: [
+      {
+        data: analytics.periodIncome.length > 0 ? analytics.periodIncome : [0],
+        color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+      },
+      {
+        data:
+          analytics.periodExpense.length > 0 ? analytics.periodExpense : [0],
+        color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+      },
+    ],
+  };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView className="flex-1 bg-gray-50" edges={["top"]}>
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: "#f9fafb" }}
+        edges={["top"]}
+      >
         <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-        <AppHeader title="History & Analytics" />
+        <AppHeader title="Analytics & Insights" backgroundColor="#f9fafb" />
 
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="p-4">
-            {/* Time Filter */}
-            <View className="flex-row p-1 mb-6 bg-gray-100 rounded-lg">
-              {timeFilterOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  onPress={() => handleTimeFilterChange(option.value)}
-                  className={`flex-1 py-2 rounded-md ${
-                    timeFilter === option.value
-                      ? "bg-white shadow-sm"
-                      : "bg-transparent"
-                  }`}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    className={`text-center text-sm font-medium ${
-                      timeFilter === option.value
-                        ? "text-gray-900"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Summary Stats Grid */}
-            <View className="grid grid-cols-2 gap-4 mb-6">
-              <View className="p-4 bg-white border border-gray-100 shadow-sm rounded-xl">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Total Income
-                  </Text>
-                  <Ionicons name="trending-up" size={16} color="#10B981" />
-                </View>
-                <Text className="text-lg font-bold text-green-600">
-                  {formatCurrency(summaryStats.income)}
-                </Text>
-              </View>
-
-              <View className="p-4 bg-white border border-gray-100 shadow-sm rounded-xl">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Total Expenses
-                  </Text>
-                  <Ionicons name="trending-down" size={16} color="#EF4444" />
-                </View>
-                <Text className="text-lg font-bold text-red-600">
-                  {formatCurrency(summaryStats.expenses)}
-                </Text>
-              </View>
-
-              <View className="p-4 bg-white border border-gray-100 shadow-sm rounded-xl">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Net Amount
-                  </Text>
-                  <Ionicons
-                    name={
-                      summaryStats.netAmount >= 0
-                        ? "checkmark-circle"
-                        : "close-circle"
-                    }
-                    size={16}
-                    color={summaryStats.netAmount >= 0 ? "#10B981" : "#EF4444"}
-                  />
-                </View>
-                <Text
-                  className={`text-lg font-bold ${
-                    summaryStats.netAmount >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {formatCurrency(summaryStats.netAmount)}
-                </Text>
-              </View>
-
-              <View className="p-4 bg-white border border-gray-100 shadow-sm rounded-xl">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm font-medium text-gray-600">
-                    Transactions
-                  </Text>
-                  <Ionicons name="receipt" size={16} color="#3B82F6" />
-                </View>
-                <Text className="text-lg font-bold text-blue-600">
-                  {summaryStats.transactionCount}
-                </Text>
-              </View>
-            </View>
-
-            {/* Monthly Trends Chart */}
-            {monthlyTrends &&
-              monthlyTrends.labels &&
-              monthlyTrends.labels.length > 0 && (
-                <View className="mb-6 bg-white border border-gray-100 shadow-sm rounded-xl">
-                  <View className="p-4 border-b border-gray-100">
-                    <Text className="text-lg font-semibold text-gray-900">
-                      Income vs Expenses Trend
-                    </Text>
-                    <Text className="text-sm text-gray-500">
-                      Last 6 months comparison
-                    </Text>
-                  </View>
-                  <View className="p-4">
-                    <LineChart
-                      data={monthlyTrends}
-                      width={screenWidth - 64}
-                      height={220}
-                      chartConfig={chartConfig}
-                      bezier
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 16 }}
+        >
+          {/* Time Filter */}
+          <View className="mb-6">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 4 }}
+            >
+              <View className="flex-row gap-3">
+                {(["week", "month", "3months", "year"] as TimeFilter[]).map(
+                  (filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      onPress={() => setTimeFilter(filter)}
+                      className={`px-4 py-2 rounded-xl ${
+                        timeFilter === filter
+                          ? "bg-blue-600"
+                          : "bg-white border border-gray-200"
+                      }`}
                       style={{
-                        borderRadius: 8,
+                        shadowColor: timeFilter === filter ? "#3B82F6" : "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: timeFilter === filter ? 0.2 : 0.05,
+                        shadowRadius: 4,
+                        elevation: 2,
                       }}
-                      withDots={true}
-                      withShadow={false}
-                      withInnerLines={false}
-                      withOuterLines={false}
-                    />
-                    <View className="flex-row items-center justify-center mt-4 space-x-6">
-                      <View className="flex-row items-center">
-                        <View className="w-3 h-3 mr-2 bg-green-500 rounded-full" />
-                        <Text className="text-sm text-gray-600">Income</Text>
-                      </View>
-                      <View className="flex-row items-center">
-                        <View className="w-3 h-3 mr-2 bg-red-500 rounded-full" />
-                        <Text className="text-sm text-gray-600">Expenses</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-            {/* Expenses by Category Pie Chart */}
-            {expensesByCategory.length > 0 && (
-              <View className="mb-6 bg-white border border-gray-100 shadow-sm rounded-xl">
-                <View className="p-4 border-b border-gray-100">
-                  <Text className="text-lg font-semibold text-gray-900">
-                    Expenses by Category
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    Top spending categories
-                  </Text>
-                </View>
-                <View className="p-4">
-                  <PieChart
-                    data={expensesByCategory}
-                    width={screenWidth - 64}
-                    height={220}
-                    chartConfig={chartConfig}
-                    accessor="amount"
-                    backgroundColor="transparent"
-                    paddingLeft="15"
-                    absolute
-                    style={{
-                      borderRadius: 8,
-                    }}
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* Top Spending Categories Detailed List */}
-            <View className="bg-white border border-gray-100 shadow-sm rounded-xl">
-              <View className="p-4 border-b border-gray-100">
-                <Text className="text-lg font-semibold text-gray-900">
-                  Top Spending Categories
-                </Text>
-                <Text className="text-sm text-gray-500">
-                  Detailed breakdown
-                </Text>
-              </View>
-              <View className="p-4">
-                {expensesByCategory.length > 0 ? (
-                  <View className="space-y-3">
-                    {expensesByCategory.map((category, index) => {
-                      const percentage = (
-                        (category.amount / summaryStats.expenses) *
-                        100
-                      ).toFixed(1);
-
-                      return (
-                        <View
-                          key={category.name}
-                          className="flex-row items-center"
-                        >
-                          <View className="flex-row items-center flex-1">
-                            <View
-                              className="w-4 h-4 mr-3 rounded-full"
-                              style={{ backgroundColor: category.color }}
-                            />
-                            <Text className="flex-1 text-sm font-medium text-gray-900">
-                              {category.name}
-                            </Text>
-                          </View>
-                          <View className="items-end">
-                            <Text className="text-sm font-semibold text-gray-900">
-                              {formatCurrency(category.amount)}
-                            </Text>
-                            <Text className="text-xs text-gray-500">
-                              {percentage}%
-                            </Text>
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <View className="py-8 text-center">
-                    <Ionicons
-                      name="pie-chart-outline"
-                      size={48}
-                      color="#9CA3AF"
-                    />
-                    <Text className="mt-2 text-gray-500">
-                      No expense data for this period
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* Recent Transactions */}
-            <View className="mt-6 bg-white border border-gray-100 shadow-sm rounded-xl">
-              <View className="p-4 border-b border-gray-100">
-                <Text className="text-lg font-semibold text-gray-900">
-                  Recent Transactions
-                </Text>
-                <Text className="text-sm text-gray-500">
-                  Last 10 transactions in this period
-                </Text>
-              </View>
-              <View className="divide-y divide-gray-100">
-                {filteredTransactions.slice(0, 10).map((transaction) => (
-                  <View key={transaction.id} className="p-4">
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-1">
-                        <Text className="font-medium text-gray-900">
-                          {transaction.description}
-                        </Text>
-                        <Text className="text-sm text-gray-500">
-                          {categories.find(
-                            (cat) => cat.id === transaction.categoryId
-                          )?.name || "Other"}{" "}
-                          • {new Date(transaction.date).toLocaleDateString()}
-                        </Text>
-                      </View>
+                    >
                       <Text
-                        className={`text-lg font-bold ${
-                          transaction.type === "income"
-                            ? "text-green-600"
-                            : "text-red-600"
+                        className={`text-sm font-semibold ${
+                          timeFilter === filter ? "text-white" : "text-gray-700"
                         }`}
                       >
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(Math.abs(transaction.amount))}
+                        {filter === "3months"
+                          ? "3 Months"
+                          : filter === "year"
+                            ? "Year"
+                            : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Summary Cards */}
+          <View className="mb-8">
+            <Text className="mb-4 text-xl font-bold text-gray-900">
+              Financial Overview
+            </Text>
+            <View className="gap-4">
+              {/* Total Income Card */}
+              <View
+                className="p-4 bg-white rounded-2xl"
+                style={{
+                  shadowColor: "#10B981",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 12,
+                  elevation: 4,
+                }}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <View className="flex-row items-center mb-2">
+                      <View
+                        className="p-2 mr-3 rounded-xl"
+                        style={{ backgroundColor: "#10B98120" }}
+                      >
+                        <Ionicons
+                          name="trending-up"
+                          size={20}
+                          color="#10B981"
+                        />
+                      </View>
+                      <Text className="text-base font-medium text-gray-600">
+                        Total Income
                       </Text>
                     </View>
-                  </View>
-                ))}
-
-                {filteredTransactions.length === 0 && (
-                  <View className="py-8 text-center">
-                    <Ionicons
-                      name="receipt-outline"
-                      size={48}
-                      color="#9CA3AF"
-                    />
-                    <Text className="mt-2 text-gray-500">
-                      No transactions found for this period
+                    <Text className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(analytics.totalIncome)}
                     </Text>
                   </View>
-                )}
+                </View>
+              </View>
+
+              {/* Total Expense Card */}
+              <View
+                className="p-4 bg-white rounded-2xl"
+                style={{
+                  shadowColor: "#EF4444",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 12,
+                  elevation: 4,
+                }}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <View className="flex-row items-center mb-2">
+                      <View
+                        className="p-2 mr-3 rounded-xl"
+                        style={{ backgroundColor: "#EF444420" }}
+                      >
+                        <Ionicons
+                          name="trending-down"
+                          size={20}
+                          color="#EF4444"
+                        />
+                      </View>
+                      <Text className="text-base font-medium text-gray-600">
+                        Total Expenses
+                      </Text>
+                    </View>
+                    <Text className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(analytics.totalExpense)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Net Amount Card */}
+              <View
+                className="p-4 bg-white rounded-2xl"
+                style={{
+                  shadowColor: analytics.netAmount >= 0 ? "#3B82F6" : "#F59E0B",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 12,
+                  elevation: 4,
+                }}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <View className="flex-row items-center mb-2">
+                      <View
+                        className="p-2 mr-3 rounded-xl"
+                        style={{
+                          backgroundColor:
+                            analytics.netAmount >= 0
+                              ? "#3B82F620"
+                              : "#F59E0B20",
+                        }}
+                      >
+                        <Ionicons
+                          name={analytics.netAmount >= 0 ? "wallet" : "warning"}
+                          size={20}
+                          color={
+                            analytics.netAmount >= 0 ? "#3B82F6" : "#F59E0B"
+                          }
+                        />
+                      </View>
+                      <Text className="text-base font-medium text-gray-600">
+                        Net Amount
+                      </Text>
+                    </View>
+                    <Text
+                      className={`text-2xl font-bold ${
+                        analytics.netAmount >= 0
+                          ? "text-green-600"
+                          : "text-orange-600"
+                      }`}
+                    >
+                      {formatCurrency(analytics.netAmount)}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
+
+          {/* Bar Chart - Income vs Expenses */}
+          {barChartData.datasets[0].data.some((val) => val > 0) ||
+          barChartData.datasets[1].data.some((val) => val > 0) ? (
+            <View className="mb-8">
+              <Text className="mb-4 text-xl font-bold text-gray-900">
+                Income vs Expenses Trend
+              </Text>
+              <View
+                className="p-4 bg-white rounded-2xl"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <BarChart
+                  data={barChartData}
+                  width={screenWidth - 64}
+                  height={220}
+                  yAxisLabel="$"
+                  yAxisSuffix=""
+                  chartConfig={{
+                    ...chartConfig,
+                    barPercentage: 0.7,
+                    fillShadowGradient: "#3B82F6",
+                    fillShadowGradientOpacity: 1,
+                  }}
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16,
+                  }}
+                  showValuesOnTopOfBars
+                  fromZero
+                />
+                <View className="flex-row justify-center gap-6 mt-4">
+                  <View className="flex-row items-center">
+                    <View
+                      className="w-3 h-3 mr-2 rounded-full"
+                      style={{ backgroundColor: "#10B981" }}
+                    />
+                    <Text className="text-sm font-medium text-gray-600">
+                      Income
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <View
+                      className="w-3 h-3 mr-2 rounded-full"
+                      style={{ backgroundColor: "#EF4444" }}
+                    />
+                    <Text className="text-sm font-medium text-gray-600">
+                      Expenses
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Pie Chart - Expense Categories */}
+          {pieChartData.length > 0 ? (
+            <View className="mb-8">
+              <Text className="mb-4 text-xl font-bold text-gray-900">
+                Expense Categories
+              </Text>
+              <View
+                className="p-4 bg-white rounded-2xl"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <PieChart
+                  data={pieChartData}
+                  width={screenWidth - 64}
+                  height={200}
+                  chartConfig={chartConfig}
+                  accessor="amount"
+                  backgroundColor="transparent"
+                  paddingLeft="15"
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16,
+                  }}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {/* Empty State */}
+          {filteredTransactions.length === 0 && (
+            <View className="items-center py-12">
+              <View className="items-center justify-center w-20 h-20 mb-4 bg-gray-100 rounded-full">
+                <Ionicons name="analytics-outline" size={40} color="#9CA3AF" />
+              </View>
+              <Text className="mb-2 text-xl font-semibold text-gray-900">
+                No Data Available
+              </Text>
+              <Text className="text-center text-gray-500">
+                No transactions found for the selected time period.{"\n"}
+                Add some transactions to see your analytics.
+              </Text>
+            </View>
+          )}
+
+          <View className="h-6" />
         </ScrollView>
       </SafeAreaView>
     </>
