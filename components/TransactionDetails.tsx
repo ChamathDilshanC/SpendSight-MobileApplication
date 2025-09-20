@@ -30,6 +30,8 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         return "trending-up";
       case "transfer":
         return "swap-horizontal";
+      case "goal_payment":
+        return "trophy-outline";
       default:
         return "help";
     }
@@ -43,13 +45,20 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         return "#10b981";
       case "transfer":
         return "#3b82f6";
+      case "goal_payment":
+        return "#8b5cf6";
       default:
         return "#6b7280";
     }
   };
 
   const formatAmount = (amount: number, type: Transaction["type"]): string => {
-    const prefix = type === "expense" ? "-" : type === "income" ? "+" : "";
+    const prefix =
+      type === "expense" || type === "goal_payment"
+        ? "-"
+        : type === "income"
+          ? "+"
+          : "";
     return `${prefix}$${amount.toFixed(2)}`;
   };
 
@@ -87,7 +96,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   const toAccount = getAccountById(transaction.toAccountId || "");
 
   const renderDetailRow = (label: string, value: string, icon?: string) => (
-    <View className="flex-row justify-between items-center py-2 border-b border-gray-100">
+    <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
       <View className="flex-row items-center flex-1">
         {icon && (
           <Ionicons
@@ -97,9 +106,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             className="mr-2"
           />
         )}
-        <Text className="text-sm text-gray-500 font-medium">{label}</Text>
+        <Text className="text-sm font-medium text-gray-500">{label}</Text>
       </View>
-      <Text className="text-sm text-gray-900 font-medium text-right flex-1">
+      <Text className="flex-1 text-sm font-medium text-right text-gray-900">
         {value}
       </Text>
     </View>
@@ -119,9 +128,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       </View>
 
       {/* Transaction Summary */}
-      <View className="bg-white m-4 rounded-2xl p-6 items-center shadow-sm">
+      <View className="items-center p-6 m-4 bg-white shadow-sm rounded-2xl">
         <View
-          className="w-16 h-16 rounded-full justify-center items-center mb-4"
+          className="items-center justify-center w-16 h-16 mb-4 rounded-full"
           style={{
             backgroundColor: getTransactionColor(transaction.type) + "20",
           }}
@@ -132,23 +141,26 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
             color={getTransactionColor(transaction.type)}
           />
         </View>
-        <Text className="text-xl font-semibold text-gray-900 text-center mb-2">
+        <Text className="mb-2 text-xl font-semibold text-center text-gray-900">
           {transaction.description}
         </Text>
         <Text
-          className="text-3xl font-extrabold mb-1"
+          className="mb-1 text-3xl font-extrabold"
           style={{ color: getTransactionColor(transaction.type) }}
         >
           {formatAmount(transaction.amount, transaction.type)}
         </Text>
-        <Text className="text-sm text-gray-500 uppercase tracking-wider">
-          {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+        <Text className="text-sm tracking-wider text-gray-500 uppercase">
+          {transaction.type === "goal_payment"
+            ? "Goal Payment"
+            : transaction.type.charAt(0).toUpperCase() +
+              transaction.type.slice(1)}
         </Text>
       </View>
 
       {/* Transaction Details */}
-      <View className="bg-white mx-4 mb-4 rounded-xl p-4 shadow-sm">
-        <Text className="text-base font-semibold text-gray-900 mb-3">
+      <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
+        <Text className="mb-3 text-base font-semibold text-gray-900">
           Details
         </Text>
 
@@ -168,21 +180,34 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         {renderDetailRow("Currency", transaction.currency, "card")}
 
         {transaction.type !== "transfer" &&
+          transaction.type !== "goal_payment" &&
           category &&
           renderDetailRow("Category", category.name, "pricetag")}
 
-        {(transaction.type === "expense" || transaction.type === "transfer") &&
+        {(transaction.type === "expense" ||
+          transaction.type === "transfer" ||
+          (transaction.type === "goal_payment" && transaction.fromAccountId)) &&
           fromAccount &&
           renderDetailRow(
-            transaction.type === "transfer" ? "From Account" : "Account",
+            transaction.type === "transfer"
+              ? "From Account"
+              : transaction.type === "goal_payment"
+                ? "Account (Withdrawal)"
+                : "Account",
             fromAccount.name,
             "wallet"
           )}
 
-        {(transaction.type === "income" || transaction.type === "transfer") &&
+        {(transaction.type === "income" ||
+          transaction.type === "transfer" ||
+          (transaction.type === "goal_payment" && transaction.toAccountId)) &&
           toAccount &&
           renderDetailRow(
-            transaction.type === "transfer" ? "To Account" : "Account",
+            transaction.type === "transfer"
+              ? "To Account"
+              : transaction.type === "goal_payment"
+                ? "Account (Deposit)"
+                : "Account",
             toAccount.name,
             "wallet"
           )}
@@ -198,8 +223,8 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
       </View>
 
       {/* Metadata */}
-      <View className="bg-white mx-4 mb-4 rounded-xl p-4 shadow-sm">
-        <Text className="text-base font-semibold text-gray-900 mb-3">
+      <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
+        <Text className="mb-3 text-base font-semibold text-gray-900">
           Metadata
         </Text>
 
@@ -264,8 +289,8 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
       {/* Location Information (if available) */}
       {transaction.location && (
-        <View className="bg-white mx-4 mb-4 rounded-xl p-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-900 mb-3">
+        <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
+          <Text className="mb-3 text-base font-semibold text-gray-900">
             Location
           </Text>
           <View className="flex-row items-center mb-2">
@@ -286,8 +311,8 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
       {/* Attachments (if available) */}
       {transaction.attachments && transaction.attachments.length > 0 && (
-        <View className="bg-white mx-4 mb-4 rounded-xl p-4 shadow-sm">
-          <Text className="text-base font-semibold text-gray-900 mb-3">
+        <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
+          <Text className="mb-3 text-base font-semibold text-gray-900">
             Attachments
           </Text>
           {transaction.attachments.map((attachment, index) => (

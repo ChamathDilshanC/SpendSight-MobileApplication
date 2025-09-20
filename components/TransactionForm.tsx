@@ -26,8 +26,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onCancel,
   isEditing = false,
 }) => {
-  const { accounts, categories, getExpenseCategories, getIncomeCategories } =
-    useFinance();
+  const {
+    accounts,
+    categories,
+    goals,
+    getExpenseCategories,
+    getIncomeCategories,
+  } = useFinance();
 
   // Form state
   const [type, setType] = useState<
@@ -44,6 +49,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     transaction?.fromAccountId || ""
   );
   const [toAccount, setToAccount] = useState(transaction?.toAccountId || "");
+  const [selectedGoal, setSelectedGoal] = useState(transaction?.goalId || "");
   const [date, setDate] = useState(transaction?.date || new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tags, setTags] = useState(transaction?.tags?.join(", ") || "");
@@ -74,6 +80,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setSelectedCategory("");
       setFromAccount("");
       setToAccount("");
+      setSelectedGoal("");
     }
   }, [type]);
 
@@ -119,9 +126,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         return false;
       }
     } else if (type === "goal_payment") {
-      // Goal payments can be deposits (fromAccount) or withdrawals (toAccount)
+      // Goal payments require either fromAccount (withdrawal) or toAccount (deposit)
       if (!fromAccount && !toAccount) {
         Alert.alert("Error", "Please select an account");
+        return false;
+      }
+      // Goal payments can't have both accounts selected
+      if (fromAccount && toAccount) {
+        Alert.alert("Error", "Goal payments can only use one account");
+        return false;
+      }
+      // Goal payments require a goal to be selected
+      if (!selectedGoal) {
+        Alert.alert("Error", "Please select a goal");
         return false;
       }
     }
@@ -170,6 +187,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         transactionData.toAccountId = toAccount;
       }
 
+      // Add goal ID for goal payments
+      if (type === "goal_payment" && selectedGoal) {
+        transactionData.goalId = selectedGoal;
+      }
+
       await onSave(transactionData);
     } catch (error) {
       Alert.alert("Error", "Failed to save transaction");
@@ -196,6 +218,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const getCategoryName = (categoryId: string): string => {
     const category = availableCategories.find((cat) => cat.id === categoryId);
     return category ? category.name : "Select Category";
+  };
+
+  const getGoalName = (goalId: string): string => {
+    const goal = goals.find((g) => g.id === goalId);
+    return goal ? goal.name : "Select Goal";
   };
 
   return (
@@ -278,7 +305,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 onPress={() => setType("goal_payment")}
               >
                 <Ionicons
-                  name="flag"
+                  name="trophy-outline"
                   size={18}
                   color={type === "goal_payment" ? "#fff" : "#8b5cf6"}
                 />
@@ -370,16 +397,103 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         )}
 
+        {/* Goal Picker (for goal_payment only) */}
+        {type === "goal_payment" && (
+          <View className="mb-6">
+            <Text className="mb-2 text-base font-semibold text-gray-800">
+              Select Goal
+            </Text>
+            <View className="bg-white shadow-sm rounded-xl max-h-48">
+              <TouchableOpacity className="px-4 py-3 border-b border-gray-200">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base text-gray-800">
+                    {selectedGoal ? getGoalName(selectedGoal) : "Select Goal"}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#9ca3af" />
+                </View>
+              </TouchableOpacity>
+              <ScrollView
+                className="max-h-36"
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={false}
+              >
+                {goals
+                  .filter((goal) => !goal.isCompleted)
+                  .map((goal) => (
+                    <TouchableOpacity
+                      key={goal.id}
+                      className={`px-4 py-3 border-b border-gray-100 ${
+                        selectedGoal === goal.id ? "bg-purple-50" : ""
+                      }`}
+                      onPress={() => setSelectedGoal(goal.id)}
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1">
+                          <Text
+                            className={`text-base font-medium ${
+                              selectedGoal === goal.id
+                                ? "text-purple-600"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {goal.name}
+                          </Text>
+                          <Text className="mt-1 text-sm text-gray-500">
+                            ${goal.currentAmount.toFixed(2)} / $
+                            {goal.targetAmount.toFixed(2)}
+                          </Text>
+                          <View className="h-2 mt-2 bg-gray-200 rounded-full">
+                            <View
+                              className="h-2 bg-purple-600 rounded-full"
+                              style={{
+                                width: `${Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)}%`,
+                              }}
+                            />
+                          </View>
+                        </View>
+                        <View className="items-center ml-3">
+                          <View
+                            className="items-center justify-center w-8 h-8 rounded-full"
+                            style={{ backgroundColor: goal.color + "20" }}
+                          >
+                            <Ionicons
+                              name={goal.icon as any}
+                              size={16}
+                              color={goal.color}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                {goals.filter((goal) => !goal.isCompleted).length === 0 && (
+                  <View className="items-center px-4 py-8">
+                    <Ionicons name="flag-outline" size={48} color="#d1d5db" />
+                    <Text className="mt-2 text-center text-gray-500">
+                      No active goals found
+                    </Text>
+                    <Text className="mt-1 text-sm text-center text-gray-400">
+                      Create a goal to track your progress
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
         {/* Account Selectors */}
         {(type === "expense" ||
           type === "transfer" ||
-          type === "goal_payment") && (
+          (type === "goal_payment" && !toAccount)) && (
           <View className="mb-6">
             <Text className="mb-2 text-base font-semibold text-gray-800">
               {type === "transfer"
                 ? "From Account"
                 : type === "goal_payment"
-                  ? "Account (From)"
+                  ? selectedGoal
+                    ? `Withdraw from ${getGoalName(selectedGoal)}`
+                    : "Account (Withdrawal)"
                   : "Account"}
             </Text>
             <View className="bg-white shadow-sm rounded-xl max-h-48">
@@ -417,13 +531,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {(type === "income" ||
           type === "transfer" ||
-          type === "goal_payment") && (
+          (type === "goal_payment" && !fromAccount)) && (
           <View className="mb-6">
             <Text className="mb-2 text-base font-semibold text-gray-800">
               {type === "transfer"
                 ? "To Account"
                 : type === "goal_payment"
-                  ? "Account (To)"
+                  ? selectedGoal
+                    ? `Deposit to ${getGoalName(selectedGoal)}`
+                    : "Account (Deposit)"
                   : "Account"}
             </Text>
             <View className="bg-white shadow-sm rounded-xl max-h-48">

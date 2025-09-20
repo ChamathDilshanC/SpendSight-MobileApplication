@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -32,7 +33,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<
-    "all" | "expense" | "income" | "transfer"
+    "all" | "expense" | "income" | "transfer" | "goal_payment"
   >("all");
 
   // Filter and search transactions
@@ -73,6 +74,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         return "trending-up";
       case "transfer":
         return "swap-horizontal";
+      case "goal_payment":
+        return "trophy-outline";
       default:
         return "help";
     }
@@ -86,13 +89,20 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         return "#10b981";
       case "transfer":
         return "#3b82f6";
+      case "goal_payment":
+        return "#8b5cf6"; // Purple color for goals
       default:
         return "#6b7280";
     }
   };
 
   const formatAmount = (amount: number, type: Transaction["type"]): string => {
-    const prefix = type === "expense" ? "-" : type === "income" ? "+" : "";
+    const prefix =
+      type === "expense" || type === "goal_payment"
+        ? "-"
+        : type === "income"
+          ? "+"
+          : "";
     return `${prefix}$${amount.toFixed(2)}`;
   };
 
@@ -103,6 +113,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       const fromAccount = getAccountById(fromAccountId || "");
       const toAccount = getAccountById(toAccountId || "");
       return `${fromAccount?.name || "Unknown"} → ${toAccount?.name || "Unknown"}`;
+    }
+
+    if (type === "goal_payment") {
+      const account = getAccountById(fromAccountId || "");
+      return `Goal Payment • ${account?.name || "Unknown Account"}`;
     }
 
     const category = getCategoryById(categoryId || "");
@@ -119,9 +134,10 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     icon: string
   ) => (
     <TouchableOpacity
-      className={`flex-row items-center px-3 py-2 rounded-lg shadow-sm ${
+      className={`flex-row items-center px-4 py-3 rounded-xl shadow-sm ${
         filterType === type ? "bg-blue-600" : "bg-white"
       }`}
+      style={{ minWidth: 80 }}
       onPress={() => setFilterType(type)}
     >
       <Ionicons
@@ -130,7 +146,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         color={filterType === type ? "#fff" : "#6b7280"}
       />
       <Text
-        className={`ml-1 text-xs font-medium ${
+        className={`ml-2 text-sm font-medium ${
           filterType === type ? "text-white" : "text-gray-500"
         }`}
       >
@@ -141,13 +157,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <TouchableOpacity
-      className="bg-white rounded-xl mb-2 shadow-sm"
+      className="mb-2 bg-white shadow-sm rounded-xl"
       onPress={() => onTransactionPress(item)}
     >
-      <View className="flex-row justify-between items-center p-4">
-        <View className="flex-1 flex-row items-center">
+      <View className="flex-row items-center justify-between p-4">
+        <View className="flex-row items-center flex-1">
           <View
-            className="w-10 h-10 rounded-full justify-center items-center mr-3"
+            className="items-center justify-center w-10 h-10 mr-3 rounded-full"
             style={{ backgroundColor: getTransactionColor(item.type) + "20" }}
           >
             <Ionicons
@@ -173,7 +189,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         </View>
         <View className="items-end">
           <Text
-            className="text-base font-bold mb-1"
+            className="mb-1 text-base font-bold"
             style={{ color: getTransactionColor(item.type) }}
           >
             {formatAmount(item.amount, item.type)}
@@ -189,12 +205,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   );
 
   const renderEmpty = () => (
-    <View className="flex-1 justify-center items-center py-16">
+    <View className="items-center justify-center flex-1 py-16">
       <Ionicons name="receipt-outline" size={64} color="#d1d5db" />
-      <Text className="text-xl font-semibold text-gray-800 mt-4 mb-2">
+      <Text className="mt-4 mb-2 text-xl font-semibold text-gray-800">
         No Transactions Found
       </Text>
-      <Text className="text-sm text-gray-500 text-center leading-5">
+      <Text className="text-sm leading-5 text-center text-gray-500">
         {searchQuery.trim()
           ? "Try adjusting your search or filters"
           : "Start by adding your first transaction"}
@@ -202,50 +218,57 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     </View>
   );
 
-  const renderHeader = () => (
-    <View className="mb-4">
-      {/* Search Bar */}
-      <View className="flex-row items-center bg-white rounded-xl px-4 py-3 mb-4 shadow-sm">
-        <Ionicons name="search" size={20} color="#9ca3af" />
-        <TextInput
-          className="flex-1 ml-3 text-base text-gray-800"
-          placeholder="Search transactions..."
-          placeholderTextColor="#9ca3af"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Ionicons name="close" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Filter Buttons */}
-      <View className="flex-row justify-between mb-4">
-        {renderFilterButton("all", "All", "list")}
-        {renderFilterButton("expense", "Expenses", "trending-down")}
-        {renderFilterButton("income", "Income", "trending-up")}
-        {renderFilterButton("transfer", "Transfers", "swap-horizontal")}
-      </View>
-
-      {/* Results Count */}
-      <View className="mb-2">
-        <Text className="text-sm text-gray-500 font-medium">
-          {filteredTransactions.length} transaction
-          {filteredTransactions.length !== 1 ? "s" : ""}
-        </Text>
-      </View>
-    </View>
-  );
-
   return (
     <View className="flex-1 bg-gray-50">
+      {/* Search and Filters - Moved outside FlatList */}
+      <View className="px-4 mb-4">
+        {/* Search Bar */}
+        <View className="flex-row items-center px-4 py-3 mt-5 mb-4 bg-white shadow-sm rounded-xl">
+          <Ionicons name="search" size={20} color="#9ca3af" />
+          <TextInput
+            className="flex-1 ml-3 text-base text-gray-800"
+            placeholder="Search transactions..."
+            placeholderTextColor="#9ca3af"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Buttons */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 16, paddingVertical: 8 }}
+          className="mb-4"
+        >
+          <View className="flex-row gap-3">
+            {renderFilterButton("all", "All", "list")}
+            {renderFilterButton("expense", "Expenses", "trending-down")}
+            {renderFilterButton("income", "Income", "trending-up")}
+            {renderFilterButton("transfer", "Transfers", "swap-horizontal")}
+            {renderFilterButton("goal_payment", "Goals", "trophy-outline")}
+          </View>
+        </ScrollView>
+
+        {/* Results Count */}
+        <View className="mb-2">
+          <Text className="text-sm font-medium text-gray-500">
+            {filteredTransactions.length} transaction
+            {filteredTransactions.length !== 1 ? "s" : ""}
+          </Text>
+        </View>
+      </View>
+
+      {/* Transaction List */}
       <FlatList
         data={filteredTransactions}
         renderItem={renderTransaction}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
           flexGrow: 1,
