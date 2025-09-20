@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { MotiView } from "moti";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import { NavigationManager } from "../utils/navigationManager";
 
 interface NavigationShortcut {
@@ -57,6 +57,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
 }) => {
   const handleShortcutPress = (shortcut: NavigationShortcut) => {
     console.log(`🚀 Shortcut pressed: ${shortcut.title}`);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (onNavigate) {
       onNavigate(shortcut.route);
@@ -68,69 +69,118 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
 
   return (
     <View className="px-5 mt-8">
-      <Text className="mb-4 text-lg font-semibold text-gray-900">
+      <Text className="pl-4 mb-4 text-lg font-semibold text-gray-900">
         Quick Actions
       </Text>
 
-      <View className="flex-row justify-between">
-        {shortcuts.map((shortcut, index) => (
-          <MotiView
-            key={shortcut.id}
-            from={{ opacity: 0, translateY: 20, scale: 0.9 }}
-            animate={{ opacity: 1, translateY: 0, scale: 1 }}
-            transition={{
-              type: "spring",
-              damping: 15,
-              stiffness: 100,
-              delay: index * 100,
-            }}
-            className="flex-1 mx-1"
-          >
-            <TouchableOpacity
-              className="items-center p-4 bg-white shadow-sm rounded-xl"
-              onPress={() => handleShortcutPress(shortcut)}
-              activeOpacity={0.7}
-              style={{
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              {/* Icon Container */}
-              <MotiView
-                from={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{
-                  type: "spring",
-                  damping: 10,
-                  delay: index * 100 + 200,
+      <View className="gap-3 p-4">
+        {/* First Row */}
+        <View className="flex-row gap-3">
+          {shortcuts.slice(0, 2).map((shortcut) => (
+            <View key={shortcut.id} className="flex-1">
+              <TouchableOpacity
+                className="items-center p-5 bg-white shadow-sm rounded-xl active:scale-95"
+                onPress={() => handleShortcutPress(shortcut)}
+                activeOpacity={0.8}
+                style={{
+                  shadowColor: shortcut.color,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 3,
                 }}
-                className="items-center justify-center w-12 h-12 mb-2 rounded-full"
-                style={{ backgroundColor: `${shortcut.color}15` }}
               >
-                <Ionicons
-                  name={shortcut.icon as any}
-                  size={24}
-                  color={shortcut.color}
-                />
-              </MotiView>
+                {/* Icon Container */}
+                <View
+                  className="items-center justify-center mb-3 w-14 h-14 rounded-xl"
+                  style={{
+                    backgroundColor: `${shortcut.color}15`,
+                    shadowColor: shortcut.color,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                  }}
+                >
+                  <Ionicons
+                    name={shortcut.icon as any}
+                    size={28}
+                    color={shortcut.color}
+                  />
+                </View>
 
-              {/* Title */}
-              <Text
-                className="text-sm font-medium text-gray-900"
-                numberOfLines={1}
+                {/* Title */}
+                <Text
+                  className="text-base font-bold text-center text-gray-900"
+                  numberOfLines={2}
+                >
+                  {shortcut.title}
+                </Text>
+
+                {/* Description */}
+                <Text
+                  className="mt-1 text-sm font-medium text-center text-gray-500"
+                  numberOfLines={1}
+                >
+                  {shortcut.description}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        {/* Second Row */}
+        <View className="flex-row gap-3">
+          {shortcuts.slice(2, 4).map((shortcut) => (
+            <View key={shortcut.id} className="flex-1">
+              <TouchableOpacity
+                className="items-center p-5 bg-white shadow-sm rounded-xl active:scale-95"
+                onPress={() => handleShortcutPress(shortcut)}
+                activeOpacity={0.8}
+                style={{
+                  shadowColor: shortcut.color,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 3,
+                }}
               >
-                {shortcut.title}
-              </Text>
+                {/* Icon Container */}
+                <View
+                  className="items-center justify-center mb-3 w-14 h-14 rounded-xl"
+                  style={{
+                    backgroundColor: `${shortcut.color}15`,
+                    shadowColor: shortcut.color,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                  }}
+                >
+                  <Ionicons
+                    name={shortcut.icon as any}
+                    size={28}
+                    color={shortcut.color}
+                  />
+                </View>
 
-              {/* Description */}
-              <Text className="text-xs text-gray-500" numberOfLines={1}>
-                {shortcut.description}
-              </Text>
-            </TouchableOpacity>
-          </MotiView>
-        ))}
+                {/* Title */}
+                <Text
+                  className="text-base font-bold text-center text-gray-900"
+                  numberOfLines={2}
+                >
+                  {shortcut.title}
+                </Text>
+
+                {/* Description */}
+                <Text
+                  className="mt-1 text-sm font-medium text-center text-gray-500"
+                  numberOfLines={1}
+                >
+                  {shortcut.description}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
