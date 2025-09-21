@@ -143,4 +143,8 @@ export class NavigationManager {
   static resetToRoute(route: string): void {
     this.safeNavigate(route, "replace");
   }
+
+  static navigateToLoadingScreen(): void {
+    this.safeNavigate("/(auth)/loading", "replace");
+  }
 }
