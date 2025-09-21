@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AnimatedAccountCard } from "../../components/AnimatedAccountCard";
 import NavigationDrawer from "../../components/NavigationDrawer";
 import { NavigationShortcuts } from "../../components/NavigationShortcuts";
+import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { useDashboardBackButton } from "../../hooks/useBackButton";
@@ -29,24 +30,20 @@ import { NavigationManager } from "../../utils/navigationManager";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
-const Dashboard = () => {
+const DashboardContent = () => {
   const { authState, logout } = useAuth();
   const { accounts } = useFinance();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
 
-  // Redirect hardware back button to dashboard (prevents leaving main section)
   useDashboardBackButton(true);
 
-  // Use Reanimated shared values instead of Animated.Value - MUST be called before any returns
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
 
-  // Check for first-time users and show budget setup
   useEffect(() => {
     const checkFirstTimeUser = async () => {
-      // Wait for auth state to be stable before checking accounts
       if (authState?.user?.id && !authState.isLoading) {
         try {
           console.log(
@@ -58,10 +55,8 @@ const Dashboard = () => {
           );
           console.log(`📊 Found ${userAccounts.length} accounts for user`);
 
-          // If no accounts found, show native budget setup prompt
           if (userAccounts.length === 0) {
             console.log("📝 First-time user detected, showing budget prompt");
-            // Small delay to ensure UI is ready
             setTimeout(() => {
               showBudgetPrompt();
             }, 1000);
@@ -147,7 +142,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Show allocation preview before confirming
     Alert.alert(
       "Budget Allocation Preview",
       `Your $${budget.toFixed(0)} will be allocated across 6 smart accounts:\n\n• Main Account (35%): $${(budget * 0.35).toFixed(0)}\n• Savings Account (20%): $${(budget * 0.2).toFixed(0)}\n• Expenses Account (25%): $${(budget * 0.25).toFixed(0)}\n• Investment Account (10%): $${(budget * 0.1).toFixed(0)}\n• Emergency Fund (5%): $${(budget * 0.05).toFixed(0)}\n• Goals & Dreams (5%): $${(budget * 0.05).toFixed(0)}\n\nProceed with this allocation?`,
@@ -189,7 +183,6 @@ const Dashboard = () => {
     }
   };
 
-  // Create animated styles in parent component to avoid crashes
   const overlayAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: overlayAnim.value,
@@ -202,27 +195,50 @@ const Dashboard = () => {
     };
   });
 
-  // Safety check to prevent rendering issues - AFTER all hooks
-  if (!authState || !authState.user) {
-    return (
-      <SafeAreaView className="flex-1 bg-white">
-        <View className="items-center justify-center flex-1">
-          <Text className="text-lg text-gray-600">Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
-  const handleLogout = async () => {
-    await logout();
-    // Navigate back to auth and clear dashboard history
-    NavigationManager.safeNavigate("/(auth)/login", "replace");
-  };
+const handleLogout = async () => {
+  Alert.alert(
+    "Logout Confirmation",
+    "You will be signed out of your SpendSight account. Your data will be saved and you can sign back in anytime.",
+    [
+      {
+        text: "Stay Logged In",
+        style: "cancel",
+        onPress: () => {
+          console.log("🚫 User chose to stay logged in");
+        },
+      },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            console.log("🚪 User confirmed logout, proceeding...");
+            await logout();
+            console.log(
+              "✅ Logout successful, auth state will handle navigation"
+            );
+          } catch (error) {
+            console.error("❌ Logout error:", error);
+            Alert.alert(
+              "Logout Failed",
+              "An error occurred while logging out. Please try again.",
+              [{ text: "OK", style: "default" }]
+            );
+          }
+        },
+      },
+    ],
+    {
+      cancelable: true, // Allows tapping outside to cancel
+      userInterfaceStyle: "light", // Optional: force light/dark style
+    }
+  );
+};
 
   const openDrawer = () => {
     setIsDrawerVisible(true);
 
-    // Use Reanimated withTiming - simplified without callback
     slideAnim.value = withTiming(0, {
       duration: 350,
       easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
@@ -245,7 +261,6 @@ const Dashboard = () => {
       easing: Easing.bezier(0.55, 0.06, 0.68, 0.19),
     });
 
-    // Use setTimeout instead of animation callback to avoid worklet issues
     setTimeout(() => {
       setIsDrawerVisible(false);
     }, 300);
@@ -259,17 +274,6 @@ const Dashboard = () => {
     console.log(`🚀 Dashboard: Navigating to ${route}`);
     NavigationManager.navigateToMainSection(route);
   };
-
-  // Safety check to prevent rendering issues - AFTER all hooks
-  if (!authState || !authState.user) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="items-center justify-center flex-1">
-          <Text className="text-lg text-gray-600">Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <>
@@ -416,6 +420,15 @@ const Dashboard = () => {
         )}
       </SafeAreaView>
     </>
+  );
+};
+
+
+const Dashboard = () => {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   );
 };
 
