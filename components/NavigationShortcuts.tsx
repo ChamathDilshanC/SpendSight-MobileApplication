@@ -62,7 +62,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
     if (onNavigate) {
       onNavigate(shortcut.route);
     } else {
-      // Use push so user can go back to dashboard
+
       NavigationManager.navigateToMainSection(shortcut.route, "push");
     }
   };
@@ -74,7 +74,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
       </Text>
 
       <View className="gap-3 p-4">
-        {/* First Row */}
+        {}
         <View className="flex-row gap-3">
           {shortcuts.slice(0, 2).map((shortcut) => (
             <View key={shortcut.id} className="flex-1">
@@ -90,7 +90,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   elevation: 3,
                 }}
               >
-                {/* Icon Container */}
+                {}
                 <View
                   className="items-center justify-center mb-3 w-14 h-14 rounded-xl"
                   style={{
@@ -108,7 +108,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   />
                 </View>
 
-                {/* Title */}
+                {}
                 <Text
                   className="text-base font-bold text-center text-gray-900"
                   numberOfLines={2}
@@ -116,7 +116,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   {shortcut.title}
                 </Text>
 
-                {/* Description */}
+                {}
                 <Text
                   className="mt-1 text-sm font-medium text-center text-gray-500"
                   numberOfLines={1}
@@ -128,7 +128,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
           ))}
         </View>
 
-        {/* Second Row */}
+        {}
         <View className="flex-row gap-3">
           {shortcuts.slice(2, 4).map((shortcut) => (
             <View key={shortcut.id} className="flex-1">
@@ -144,7 +144,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   elevation: 3,
                 }}
               >
-                {/* Icon Container */}
+                {}
                 <View
                   className="items-center justify-center mb-3 w-14 h-14 rounded-xl"
                   style={{
@@ -162,7 +162,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   />
                 </View>
 
-                {/* Title */}
+                {}
                 <Text
                   className="text-base font-bold text-center text-gray-900"
                   numberOfLines={2}
@@ -170,7 +170,7 @@ export const NavigationShortcuts: React.FC<NavigationShortcutsProps> = ({
                   {shortcut.title}
                 </Text>
 
-                {/* Description */}
+                {}
                 <Text
                   className="mt-1 text-sm font-medium text-center text-gray-500"
                   numberOfLines={1}

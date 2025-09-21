@@ -26,7 +26,7 @@ export const useAuthNavigation = () => {
           NavigationManager.navigateToDashboard();
         }, 500);
       }
-      // Don't navigate away if not authenticated - let the current screen handle it
+
     }
   }, [authState.isLoading, authState.isAuthenticated]);
 };

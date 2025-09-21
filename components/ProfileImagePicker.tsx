@@ -16,7 +16,7 @@ interface ProfileImagePickerProps {
   userId: string;
   onImageUploaded: (imageUrl: string) => void;
   onError?: (error: string) => void;
-  children: React.ReactNode; // The trigger element (like avatar)
+  children: React.ReactNode;
 }
 
 export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
@@ -29,7 +29,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
   const [uploading, setUploading] = useState(false);
 
   const requestPermissions = async () => {
-    // Request camera permissions
+
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
     if (!cameraPermission.granted) {
       Alert.alert(
@@ -40,7 +40,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
       return false;
     }
 
-    // Request media library permissions
+
     const mediaPermission =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!mediaPermission.granted) {
@@ -118,7 +118,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
     try {
       setUploading(true);
 
-      // Validate image
+
       const validation = UserProfileService.validateImage(imageUri);
       if (!validation.valid) {
         throw new Error(validation.error);
@@ -126,7 +126,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
 
       console.log("📸 Uploading profile image...");
 
-      // Upload image to Firebase
+
       const uploadResult = await UserProfileService.uploadProfileImage(
         userId,
         imageUri
@@ -157,7 +157,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
 
   return (
     <>
-      {/* Trigger Element */}
+      {}
       <TouchableOpacity
         onPress={showImageOptions}
         disabled={uploading}
@@ -165,7 +165,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
       >
         {children}
 
-        {/* Upload Indicator Overlay */}
+        {}
         {uploading && (
           <View className="absolute inset-0 items-center justify-center bg-black bg-opacity-50 rounded-full">
             <ActivityIndicator size="small" color="#ffffff" />
@@ -173,7 +173,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Image Source Selection Modal */}
+      {}
       <Modal
         animationType="slide"
         transparent={true}
@@ -185,7 +185,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
       >
         <View className="justify-end flex-1 bg-black bg-opacity-50">
           <View className="bg-white rounded-t-3xl">
-            {/* Modal Header */}
+            {}
             <View className="items-center p-4 border-b border-gray-200">
               <View className="w-12 h-1 mb-4 bg-gray-300 rounded-full" />
               <Text className="text-lg font-semibold text-gray-900">
@@ -193,7 +193,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
               </Text>
             </View>
 
-            {/* Options */}
+            {}
             <View className="p-6">
               <TouchableOpacity
                 className="flex-row items-center p-4 mb-3 rounded-xl bg-gray-50"
@@ -203,7 +203,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
                 }}
                 activeOpacity={0.7}
               >
-                <View className="items-center justify-center w-12 h-12 mr-4 rounded-full bg-blue-100">
+                <View className="items-center justify-center w-12 h-12 mr-4 bg-blue-100 rounded-full">
                   <Ionicons name="camera" size={24} color="#3B82F6" />
                 </View>
                 <View className="flex-1">
@@ -224,7 +224,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
                 }}
                 activeOpacity={0.7}
               >
-                <View className="items-center justify-center w-12 h-12 mr-4 rounded-full bg-green-100">
+                <View className="items-center justify-center w-12 h-12 mr-4 bg-green-100 rounded-full">
                   <Ionicons name="images" size={24} color="#10B981" />
                 </View>
                 <View className="flex-1">
@@ -237,7 +237,7 @@ export const ProfileImagePicker: React.FC<ProfileImagePickerProps> = ({
                 </View>
               </TouchableOpacity>
 
-              {/* Cancel Button */}
+              {}
               <Pressable
                 className="items-center justify-center w-full p-4 border border-gray-300 rounded-xl"
                 onPress={() => {

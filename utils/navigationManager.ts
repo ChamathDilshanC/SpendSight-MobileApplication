@@ -100,16 +100,12 @@ export class NavigationManager {
     this.navigateToMainSection("/(settings)");
   }
 
-  /**
-   * Navigate to GetStarted screen and replace splash screen
-   */
+
   static navigateToGetStarted(): void {
     this.safeNavigate("/(getStarted)/getStartedScreen", "replace");
   }
 
-  /**
-   * Navigate to auth screens from GetStarted (replace to prevent back to GetStarted)
-   */
+
   static navigateToSignupFromGetStarted(): void {
     this.safeNavigate("/(auth)/signup", "replace");
   }
@@ -118,24 +114,17 @@ export class NavigationManager {
     this.safeNavigate("/(auth)/login", "replace");
   }
 
-  /**
-   * Navigate to login and clear dashboard history
-   * This prevents users from going back to dashboard after logout
-   */
+  
   static navigateToAuth(): void {
     this.safeNavigate("/(auth)/login", "replace");
   }
 
-  /**
-   * Navigate to signup from login (maintains auth flow)
-   */
+
   static navigateToSignup(): void {
     this.safeNavigate("/(auth)/signup", "push");
   }
 
-  /**
-   * Navigate to login from signup (maintains auth flow)
-   */
+
   static navigateToLogin(): void {
     this.safeNavigate("/(auth)/login", "push");
   }

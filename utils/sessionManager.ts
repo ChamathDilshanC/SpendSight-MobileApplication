@@ -12,13 +12,11 @@ export interface SessionData {
 }
 
 export class SessionManager {
-  /**
-   * Save user session with 10-day expiration
-   */
+
   static async saveSession(userId: string, email: string): Promise<void> {
     try {
       const now = Date.now();
-      const expiryTime = now + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000; // 10 days in milliseconds
+      const expiryTime = now + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
       const sessionData: SessionData = {
         userId,
@@ -40,9 +38,7 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Get current session if valid (not expired)
-   */
+
   static async getValidSession(): Promise<SessionData | null> {
     try {
       const [sessionDataString, expiryString] = await AsyncStorage.multiGet([
@@ -73,22 +69,18 @@ export class SessionManager {
       return sessionData;
     } catch (error) {
       console.error("❌ Failed to get session:", error);
-      await this.clearSession(); // Clear corrupted session
+      await this.clearSession();
       return null;
     }
   }
 
-  /**
-   * Check if session exists and is valid
-   */
+
   static async isSessionValid(): Promise<boolean> {
     const session = await this.getValidSession();
     return session !== null;
   }
 
-  /**
-   * Clear session data
-   */
+
   static async clearSession(): Promise<void> {
     try {
       await AsyncStorage.multiRemove([SESSION_KEY, SESSION_EXPIRY_KEY]);
@@ -98,9 +90,7 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Extend session by another 10 days (optional - for when user actively uses app)
-   */
+
   static async extendSession(): Promise<void> {
     const currentSession = await this.getValidSession();
     if (currentSession) {
@@ -109,9 +99,7 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Get session info for debugging
-   */
+
   static async getSessionInfo(): Promise<string> {
     const session = await this.getValidSession();
     if (!session) {

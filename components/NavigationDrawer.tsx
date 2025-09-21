@@ -55,7 +55,7 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
       backgroundColor: isActive ? "#ECFDF5" : "transparent",
     }}
   >
-    {/* Icon container with proper spacing */}
+    {}
     <View className="items-center justify-center w-8 h-8 mr-4">
       <Ionicons
         name={icon as any}
@@ -74,7 +74,7 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
       {title}
     </Text>
 
-    {/* Chevron indicator */}
+    {}
     <Ionicons
       name="chevron-forward-outline"
       size={16}
@@ -93,12 +93,12 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   const insets = useSafeAreaInsets();
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  // Load user's profile image on component mount
+
   useEffect(() => {
     const loadProfileImage = async () => {
       if (authState?.user?.id) {
         try {
-          // First check if user already has profileImage in authState
+
           const existingImage =
             authState.user.profileImage || authState.user.profilePicture;
           if (existingImage) {
@@ -106,7 +106,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             return;
           }
 
-          // If not, fetch from Firestore
+
           const imageUrl = await UserProfileService.getUserProfileImage(
             authState.user.id
           );
@@ -120,10 +120,10 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     loadProfileImage();
   }, [authState?.user?.id, authState?.user?.profileImage]);
 
-  // Add debugging for drawer visibility
+
   console.log("🎭 NavigationDrawer render - isVisible:", isVisible);
 
-  // Safety check for authState
+
   if (!authState || !authState.user) {
     console.log("❌ NavigationDrawer: authState or user is missing");
     return null;
@@ -139,8 +139,8 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     console.log("✅ Profile image uploaded successfully:", imageUrl);
     setProfileImage(imageUrl);
 
-    // Optionally update the authState context if needed
-    // This would require adding a method to update user profile in AuthContext
+
+
   };
 
   const handleProfileImageError = (error: string) => {
@@ -152,49 +152,49 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     console.log(`🎯 NavigationDrawer: User clicked on ${screen}`);
     onClose();
 
-    // Add a small delay to ensure drawer closes before navigation with smoother timing
+
     setTimeout(() => {
       switch (screen) {
         case "dashboard":
         case "expenses":
-          // Navigate to main dashboard (replace current screen)
+
           console.log(`📱 Navigating to ${screen}...`);
           NavigationManager.navigateToDashboardSection();
           break;
         case "accounts":
-          // Navigate to account management screen (replace current screen)
+
           console.log(`📱 Navigating to accounts...`);
           NavigationManager.navigateToAccountsSection();
           break;
         case "categories":
-          // Navigate to categories screen (replace current screen)
+
           console.log(`📱 Navigating to categories...`);
           NavigationManager.navigateToCategoriesSection();
           break;
         case "help":
-          // Navigate to help & support screen (replace current screen)
+
           console.log(`📱 Navigating to help...`);
           NavigationManager.navigateToHelpSection();
           break;
         case "transactions":
-          // Navigate to transaction management screen
+
           console.log(`📱 Navigating to transactions...`);
           NavigationManager.navigateToTransactionSection();
           break;
         case "history":
-          // Navigate to transaction history screen
+
           console.log(`📱 Navigating to history...`);
           NavigationManager.navigateToHistorySection();
           break;
         case "goals":
-          // Navigate to goals management screen
+
           console.log(`📱 Navigating to goals...`);
           NavigationManager.navigateToGoalsSection();
           break;
         case "analytics":
         case "budget":
         case "notifications":
-          // For now, these will show a coming soon message
+
           console.log(`Navigate to ${screen} - Feature coming soon!`);
           Alert.alert(
             "🚀 Coming Soon",
@@ -203,7 +203,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           );
           break;
         case "settings":
-          // Navigate to settings screen
+
           console.log(`📱 Navigating to settings...`);
           NavigationManager.navigateToSettingsSection();
           break;
@@ -211,7 +211,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           console.log(`Navigate to ${screen} - Unknown route`);
           NavigationManager.navigateToDashboardHome();
       }
-    }, 350); // Match the drawer close animation timing
+    }, 350);
   };
 
   if (!isVisible) {
@@ -221,7 +221,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
 
   console.log("✅ NavigationDrawer is visible, rendering drawer");
 
-  // Add safety check for animated styles
+
   if (!overlayAnimatedStyle || !drawerAnimatedStyle) {
     console.error("❌ Animated styles are missing!", {
       overlayAnimatedStyle,
@@ -233,7 +233,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   try {
     return (
       <>
-        {/* Overlay with smooth fade animation */}
+        {}
         <Animated.View
           className="absolute inset-0 bg-black/50 z-[998]"
           style={overlayAnimatedStyle}
@@ -245,23 +245,23 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           />
         </Animated.View>
 
-        {/* Drawer with enhanced border radius and drop shadow */}
+        {}
         <Animated.View
           className="absolute top-0 left-0 bottom-0 bg-white z-[999]"
           style={[
             drawerAnimatedStyle,
             {
               width: DRAWER_WIDTH,
-              // Enhanced border radius for modern look
+
               borderTopRightRadius: 24,
               borderBottomRightRadius: 24,
-              // Professional drop shadow
+
               shadowColor: "#000",
               shadowOffset: { width: 8, height: 0 },
               shadowOpacity: 0.15,
               shadowRadius: 20,
               elevation: 16,
-              // Subtle border for definition
+
               borderRightWidth: 1,
               borderRightColor: "rgba(0,0,0,0.08)",
             },
@@ -272,13 +272,13 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             backgroundColor="rgba(0,0,0,0.5)"
           />
 
-          {/* Header with user info - Enhanced with rounded top and gradient */}
+          {}
           <View
             className="px-5 pb-6 border-b border-gray-200"
             style={{
               paddingTop: insets.top + 20,
               backgroundColor: "#F8FAFC",
-              borderTopRightRadius: 24, // Match drawer border radius
+              borderTopRightRadius: 24,
             }}
           >
             <View className="flex-row items-center">
@@ -305,7 +305,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                         className="w-16 h-16 rounded-full"
                         style={{ resizeMode: "cover" }}
                       />
-                      {/* Camera icon overlay for edit indication */}
+                      {}
                       <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
                         <Ionicons name="camera" size={12} color="white" />
                       </View>
@@ -317,7 +317,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                           authState?.user?.fullName
                         )}
                       </Text>
-                      {/* Camera icon overlay for upload indication */}
+                      {}
                       <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
                         <Ionicons name="add" size={12} color="white" />
                       </View>
@@ -340,7 +340,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             </View>
           </View>
 
-          {/* Menu Items */}
+          {}
           <View className="flex-1 pt-2">
             <DrawerItem
               icon="home-outline"
@@ -406,11 +406,11 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             />
           </View>
 
-          {/* Footer with enhanced styling and rounded bottom */}
+          {}
           <View
             className="border-t border-gray-200 bg-gray-50/50"
             style={{
-              borderBottomRightRadius: 24, // Match drawer border radius
+              borderBottomRightRadius: 24,
             }}
           >
             <TouchableOpacity
@@ -418,7 +418,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
               onPress={handleLogout}
               activeOpacity={0.6}
             >
-              {/* Icon container for logout with proper spacing */}
+              {}
               <View className="items-center justify-center w-8 h-8 mr-4">
                 <Ionicons name="log-out-outline" size={22} color="#EF4444" />
               </View>
@@ -435,7 +435,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             <View
               className="items-center py-4 border-t border-gray-100"
               style={{
-                borderBottomRightRadius: 24, // Match drawer border radius
+                borderBottomRightRadius: 24,
               }}
             >
               <Text className="text-xs font-medium text-gray-400">
