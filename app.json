@@ -28,7 +28,23 @@
       "favicon": "./assets/images/SpendSightLogo.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.45937352137-8p3m4nutcplmojnot778jp6rdbdadind",
+          "ios": {
+            "reservedClientId": "com.googleusercontent.apps.45937352137-8p3m4nutcplmojnot778jp6rdbdadind"
+          },
+          "android": {
+            "requestIdToken": true,
+            "requestEmail": true,
+            "requestProfile": true
+          }
+        }
+      ]
+    ],
     "extra": {
       "router": {
         "origin": false
