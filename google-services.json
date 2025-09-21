@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "45937352137",
+    "project_id": "spendsightmobileapp",
+    "storage_bucket": "spendsightmobileapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45937352137:android:1c06e2eccf5c5ee6335c18",
+        "android_client_info": {
+          "package_name": "com.chamathdilshan.spendsight"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "45937352137-hsl7n6dis9lt440637955foqphd8nshe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chamathdilshan.spendsight",
+            "certificate_hash": "57ceb0b1409a7ed0a2329bd77957cc3d2de9d293"
+          }
+        },
+        {
+          "client_id": "45937352137-u6tkuf6i5il66miv1aj1i8g01gr7q6b2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKGwyA57IM8F7M5M09kABHo1bpTYqlAHE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "45937352137-k7867qtcbruvcvk9f9ch0aka41o6je17.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "45937352137-8p3m4nutcplmojnot778jp6rdbdadind.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.chamathdilshan.spendsight"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
