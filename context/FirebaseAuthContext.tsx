@@ -21,9 +21,6 @@ import {
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
-// Google Sign-In Import
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-
 // Local Imports
 import {
   AuthContextType,
@@ -33,6 +30,17 @@ import {
   UserRegistrationData,
 } from "../types/user";
 import { SessionManager } from "../utils/sessionManager";
+
+// Conditionally import GoogleSignin - only if available
+let GoogleSignin: any = null;
+try {
+  const {
+    GoogleSignin: GS,
+  } = require("@react-native-google-signin/google-signin");
+  GoogleSignin = GS;
+} catch (error) {
+  console.log("Google Sign-In not available - this is expected in Expo Go");
+}
 
 // Initial state
 const initialAuthState: AuthState = {
@@ -132,40 +140,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
   useEffect(() => {
-    // Only configure Google Sign-In if the module is available (in custom dev builds)
-    try {
-      GoogleSignin.configure({
-        webClientId:
-          "45937352137-u6tkuf6i5il66miv1aj1i8g01gr7q6b2.apps.googleusercontent.com", // Web client ID from google-services.json
-        iosClientId:
-          "45937352137-8p3m4nutcplmojnot778jp6rdbdadind.apps.googleusercontent.com", // iOS client ID from GoogleService-Info.plist
-        offlineAccess: true, // Enable to get refresh token
-        hostedDomain: "", // Optional: specify domain
-        forceCodeForRefreshToken: true, // Force code for refresh token on Android
-      });
-    } catch (error) {
-      console.warn("Google Sign-In configuration failed:", error);
-      console.warn(
-        "This is expected if running in Expo Go. Use a custom development build for Google Sign-In functionality."
-      );
+    // Only configure Google Sign-In if available (not in Expo Go)
+    if (GoogleSignin) {
+      try {
+        GoogleSignin.configure({
+          webClientId:
+            "45937352137-u6tkuf6i5il66miv1aj1i8g01gr7q6b2.apps.googleusercontent.com",
+          iosClientId:
+            "45937352137-8p3m4nutcplmojnot778jp6rdbdadind.apps.googleusercontent.com",
+          offlineAccess: true,
+          hostedDomain: "",
+          forceCodeForRefreshToken: true,
+        });
+        console.log("✅ Google Sign-In configured successfully");
+      } catch (error) {
+        console.warn("⚠️ Google Sign-In configuration failed:", error);
+      }
+    } else {
+      console.log("ℹ️ Google Sign-In not available - running in Expo Go");
     }
   }, []);
 
   useEffect(() => {
+    console.log("🔄 Setting up auth state listener...");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log(
+        "🔄 Auth state changed:",
+        firebaseUser ? "User logged in" : "User logged out"
+      );
+
       if (firebaseUser) {
         try {
           const user = await convertFirebaseUser(firebaseUser);
+          console.log("✅ User data loaded:", user.email);
           dispatch({ type: "LOGIN_SUCCESS", payload: user });
         } catch (error) {
-          console.error("Auth state change error:", error);
+          console.error("❌ Auth state change error:", error);
           dispatch({ type: "SET_ERROR", payload: "Failed to load user data." });
         }
       } else {
+        console.log("🚪 User signed out");
         dispatch({ type: "LOGOUT" });
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      console.log("🔄 Cleaning up auth state listener");
+      unsubscribe();
+    };
   }, []);
 
   const register = async (
@@ -220,7 +242,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userCredential.user.uid,
         userCredential.user.email || ""
       );
-      // onAuthStateChanged will handle the rest
       return true;
     } catch (error: any) {
       let msg = "Registration failed. Please try again.";
@@ -250,6 +271,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
 
     try {
+      console.log("🔐 Attempting login for:", email);
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.toLowerCase().trim(),
@@ -259,9 +281,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userCredential.user.uid,
         userCredential.user.email || ""
       );
-      // onAuthStateChanged will handle the rest
+      console.log("✅ Login successful");
       return true;
     } catch (error: any) {
+      console.error("❌ Login error:", error.code);
       let msg = "Login failed. Please check your credentials.";
       if (
         error.code === "auth/user-not-found" ||
@@ -279,21 +302,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "CLEAR_ERROR" });
 
-    try {
-      // Check if GoogleSignin is available (only in custom development builds)
-      if (
-        typeof GoogleSignin === "undefined" ||
-        !GoogleSignin.hasPlayServices
-      ) {
-        throw new Error("Google Sign-In is not available in this environment");
-      }
+    // Check if Google Sign-In is available
+    if (!GoogleSignin) {
+      dispatch({
+        type: "SET_ERROR",
+        payload:
+          "Google Sign-In is only available in custom development builds. Please use email/password login or build a custom development client.",
+      });
+      return false;
+    }
 
+    try {
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
       const userInfo = await GoogleSignin.signIn();
 
-      // Extract the ID token from the user info
       const idToken = userInfo.data?.idToken;
       if (!idToken) {
         throw new Error("No ID token received from Google Sign-In");
@@ -320,19 +344,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userCredential.user.uid,
         userCredential.user.email || ""
       );
-      // onAuthStateChanged will handle the rest
       return true;
     } catch (error: any) {
-      if (
-        error.message === "Google Sign-In is not available in this environment"
-      ) {
-        dispatch({
-          type: "SET_ERROR",
-          payload:
-            "Google Sign-In is only available in custom development builds. Please use email/password login or build a custom development client.",
-        });
-      } else if (error.code !== "12501" && error.code !== "-5") {
-        // 12501 = user cancelled flow, -5 = network error
+      if (error.code !== "12501" && error.code !== "-5") {
         console.error("Google Sign-In Error: ", error);
         dispatch({
           type: "SET_ERROR",
@@ -352,27 +366,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const logout = async (): Promise<void> => {
     try {
-      // Sign out from Google if signed in and GoogleSignin is available
-      try {
-        if (
-          typeof GoogleSignin !== "undefined" &&
-          GoogleSignin.getCurrentUser
-        ) {
+      console.log("🚪 Logging out user...");
+
+      // Sign out from Google if signed in and available
+      if (GoogleSignin) {
+        try {
           const currentUser = await GoogleSignin.getCurrentUser();
           if (currentUser) {
             await GoogleSignin.signOut();
+            console.log("✅ Google sign out successful");
           }
+        } catch (googleError) {
+          console.log("ℹ️ Google sign out not needed or failed:", googleError);
         }
-      } catch (googleError) {
-        // User might not be signed in with Google or GoogleSignin not available, continue with Firebase logout
-        console.log("Google sign out not needed or failed:", googleError);
       }
 
       await signOut(auth);
       await SessionManager.clearSession();
-      // onAuthStateChanged will handle the rest
+      console.log("✅ Logout successful");
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
     }
   };
 
