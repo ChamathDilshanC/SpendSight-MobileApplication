@@ -11,14 +11,19 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { GoalService } from "../../services/GoalService";
 import { Goal } from "../../types/finance";
+
+const { height: screenHeight } = Dimensions.get('window');
 
 interface NewGoal {
   name: string;
@@ -40,9 +45,11 @@ export default function GoalsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [showAutoTransferModal, setShowAutoTransferModal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
   const [transactionForm, setTransactionForm] = useState({
@@ -135,6 +142,27 @@ export default function GoalsScreen() {
     "#DC2626",
     "#16A34A",
   ];
+
+  // Date picker handlers
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (selectedDate && event.type !== 'dismissed') {
+      setNewGoal({ ...newGoal, targetDate: selectedDate });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const openDatePicker = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowDatePicker(true);
+  };
+
+  const closeDatePicker = () => {
+    setShowDatePicker(false);
+  };
 
   const loadGoals = useCallback(async () => {
     if (!authState?.user?.id) {
@@ -381,7 +409,7 @@ export default function GoalsScreen() {
         authState.user!.id,
         selectedGoal.id,
         transactionForm.accountId,
-        -amount, // Negative amount for withdrawal
+        -amount,
         transactionForm.description.trim() ||
           `Withdrawal from ${selectedGoal.name}`
       );
@@ -673,7 +701,6 @@ export default function GoalsScreen() {
                   </View>
                 </View>
 
-                {/* Progress Bar */}
                 <View className="my-3">
                   <View className="h-2 overflow-hidden bg-gray-200 rounded-full">
                     <View
@@ -705,7 +732,6 @@ export default function GoalsScreen() {
                   </View>
                 )}
 
-                {/* Action Buttons */}
                 <View className="flex-row justify-between mt-3">
                   <View className="flex-row gap-2">
                     <TouchableOpacity
@@ -784,35 +810,51 @@ export default function GoalsScreen() {
         <View className="h-10" />
       </ScrollView>
 
-      {/* Add/Edit Goal Modal */}
+      {/* FIXED Add/Edit Goal Modal */}
       <Modal
         visible={showAddModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowAddModal(false)}
+        onRequestClose={() => {
+          setShowAddModal(false);
+          setShowDatePicker(false);
+        }}
       >
-        <View className="justify-end flex-1 bg-black/20">
+        <View className="flex-1 bg-black/50">
           <View
-            className="p-6 bg-white rounded-t-3xl"
-            style={{ maxHeight: "90%" }}
+            className="mt-16 bg-white rounded-t-3xl"
+            style={{
+              height: screenHeight - 64,
+              flex: 1,
+            }}
           >
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-2xl font-bold text-gray-900">
+            {/* Fixed Header */}
+            <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
+              <Text className="text-xl font-bold text-gray-900">
                 {editingGoal ? "Edit Goal" : "Add New Goal"}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowAddModal(false)}
+                onPress={() => {
+                  setShowAddModal(false);
+                  setShowDatePicker(false);
+                }}
                 className="p-2 bg-gray-100 rounded-full"
               >
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={20} color="#374151" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Scrollable Content */}
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ padding: 20 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Goal Name */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
-                  Goal Name
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
+                  Goal Name *
                 </Text>
                 <TextInput
                   value={newGoal.name}
@@ -820,15 +862,15 @@ export default function GoalsScreen() {
                     setNewGoal({ ...newGoal, name: text })
                   }
                   placeholder="Enter goal name"
-                  className="p-4 text-base border border-gray-200 rounded-xl"
-                  style={{ backgroundColor: "#f9fafb" }}
+                  className="p-4 text-base bg-white border border-gray-300 rounded-xl"
+                  style={{ minHeight: 50 }}
                 />
               </View>
 
               {/* Target Amount */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
-                  Target Amount
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
+                  Target Amount *
                 </Text>
                 <TextInput
                   value={newGoal.targetAmount}
@@ -837,83 +879,133 @@ export default function GoalsScreen() {
                   }
                   placeholder="0.00"
                   keyboardType="numeric"
-                  className="p-4 text-base border border-gray-200 rounded-xl"
-                  style={{ backgroundColor: "#f9fafb" }}
+                  className="p-4 text-base bg-white border border-gray-300 rounded-xl"
+                  style={{ minHeight: 50 }}
                 />
               </View>
 
               {/* Category */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
                   Category
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {goalCategories.map((category) => (
-                    <TouchableOpacity
-                      key={category.value}
-                      onPress={() =>
-                        setNewGoal({ ...newGoal, category: category.value })
-                      }
-                      className={`flex-row items-center px-4 py-3 rounded-xl border-2 ${
-                        newGoal.category === category.value
-                          ? "border-green-500 bg-green-50"
-                          : "border-gray-200 bg-white"
-                      }`}
-                    >
-                      <Ionicons
-                        name={category.icon as any}
-                        size={20}
-                        color={
-                          newGoal.category === category.value
-                            ? category.color
-                            : "#6B7280"
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row gap-3 pb-2">
+                    {goalCategories.map((category) => (
+                      <TouchableOpacity
+                        key={category.value}
+                        onPress={() =>
+                          setNewGoal({ ...newGoal, category: category.value })
                         }
-                      />
-                      <Text
-                        className={`ml-2 font-medium ${
+                        className={`flex-row items-center px-4 py-3 rounded-xl border-2 ${
                           newGoal.category === category.value
-                            ? "text-green-700"
-                            : "text-gray-700"
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200 bg-white"
                         }`}
+                        style={{ minWidth: 120 }}
                       >
-                        {category.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                        <Ionicons
+                          name={category.icon as any}
+                          size={18}
+                          color={
+                            newGoal.category === category.value
+                              ? category.color
+                              : "#6B7280"
+                          }
+                        />
+                        <Text
+                          className={`ml-2 font-medium ${
+                            newGoal.category === category.value
+                              ? "text-green-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {category.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
               </View>
 
               {/* Target Date */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-black-700">
                   Target Date
                 </Text>
                 <TouchableOpacity
-                  className="p-4 border border-gray-200 rounded-xl"
-                  style={{ backgroundColor: "#f9fafb" }}
-                  onPress={() => {
-                    Alert.alert(
-                      "Date Picker",
-                      "Date picker functionality would be implemented here"
-                    );
-                  }}
+                  className="p-4 bg-white border border-gray-300 rounded-xl"
+                  onPress={openDatePicker}
+                  activeOpacity={0.7}
+                  style={{ minHeight: 50 }}
                 >
-                  <View className="flex-row items-center">
-                    <Ionicons
-                      name="calendar-outline"
-                      size={20}
-                      color="#6b7280"
-                    />
-                    <Text className="ml-3 text-base text-gray-900">
-                      {formatDate(newGoal.targetDate)}
-                    </Text>
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="calendar-outline"
+                        size={20}
+                        color="#6b7280"
+                      />
+                      <Text className="ml-3 text-base text-gray-900">
+                        {formatDate(newGoal.targetDate)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={18} color="#6b7280" />
                   </View>
                 </TouchableOpacity>
+
+                {/* iOS Date Picker */}
+                {/* iOS Date Picker - FIXED */}
+                {showDatePicker && Platform.OS === "ios" && (
+                  <View
+                    className="mt-4 bg-white border border-gray-200 rounded-xl"
+                    style={{
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
+                      elevation: 3,
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
+                      <Text className="text-lg font-semibold text-gray-900">
+                        Select Target Date
+                      </Text>
+                      <TouchableOpacity
+                        onPress={closeDatePicker}
+                        className="px-4 py-2 bg-blue-500 rounded-lg"
+                        style={{
+                          shadowColor: "#3B82F6",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 4,
+                        }}
+                      >
+                        <Text className="font-semibold text-white">Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View className="p-4">
+                      <DateTimePicker
+                        value={newGoal.targetDate}
+                        mode="date"
+                        display="spinner"
+                        onChange={onDateChange}
+                        minimumDate={new Date()}
+                        style={{
+                          backgroundColor: "white",
+                          height: 180,
+                        }}
+                        textColor="#000000"
+                        themeVariant="light"
+                      />
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Description */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
                   Description (Optional)
                 </Text>
                 <TextInput
@@ -922,19 +1014,19 @@ export default function GoalsScreen() {
                     setNewGoal({ ...newGoal, description: text })
                   }
                   placeholder="Enter description"
-                  className="p-4 text-base border border-gray-200 rounded-xl"
-                  style={{ backgroundColor: "#f9fafb" }}
+                  className="p-4 text-base bg-white border border-gray-300 rounded-xl"
                   multiline
                   numberOfLines={3}
+                  style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
               </View>
 
               {/* Color Picker */}
-              <View className="mb-4">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
+              <View className="mb-5">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
                   Choose Color
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
+                <View className="flex-row flex-wrap gap-3">
                   {goalColors.map((color) => (
                     <TouchableOpacity
                       key={color}
@@ -951,11 +1043,11 @@ export default function GoalsScreen() {
               </View>
 
               {/* Icon Picker */}
-              <View className="mb-6">
-                <Text className="mb-2 text-base font-semibold text-gray-700">
+              <View className="mb-8">
+                <Text className="mb-3 text-base font-semibold text-gray-700">
                   Choose Icon
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
+                <View className="flex-row flex-wrap gap-3">
                   {goalIcons.map((icon) => (
                     <TouchableOpacity
                       key={icon}
@@ -968,18 +1060,23 @@ export default function GoalsScreen() {
                     >
                       <Ionicons
                         name={icon as any}
-                        size={24}
+                        size={22}
                         color={newGoal.icon === icon ? "#10B981" : "#6B7280"}
                       />
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
+            </ScrollView>
 
-              {/* Action Buttons */}
-              <View className="flex-row gap-3 pt-4">
+            {/* Fixed Bottom Buttons */}
+            <View className="p-4 bg-white border-t border-gray-100">
+              <View className="flex-row gap-3">
                 <TouchableOpacity
-                  onPress={() => setShowAddModal(false)}
+                  onPress={() => {
+                    setShowAddModal(false);
+                    setShowDatePicker(false);
+                  }}
                   className="flex-1 px-6 py-4 bg-gray-100 rounded-xl"
                 >
                   <Text className="text-base font-semibold text-center text-gray-700">
@@ -996,10 +1093,21 @@ export default function GoalsScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
+
+      {/* Android Date Picker */}
+      {showDatePicker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={newGoal.targetDate}
+          mode="date"
+          display="default"
+          onChange={onDateChange}
+          minimumDate={new Date()}
+        />
+      )}
 
       {/* Deposit Modal */}
       <Modal
@@ -1034,7 +1142,6 @@ export default function GoalsScreen() {
               </View>
             )}
 
-            {/* Amount */}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Deposit Amount
@@ -1051,7 +1158,6 @@ export default function GoalsScreen() {
               />
             </View>
 
-            {/* From Account */}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 From Account
@@ -1085,7 +1191,6 @@ export default function GoalsScreen() {
               </ScrollView>
             </View>
 
-            {/* Description */}
             <View className="mb-6">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Description (Optional)
@@ -1101,7 +1206,6 @@ export default function GoalsScreen() {
               />
             </View>
 
-            {/* Action Buttons */}
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setShowDepositModal(false)}
@@ -1157,7 +1261,6 @@ export default function GoalsScreen() {
               </View>
             )}
 
-            {/* Amount */}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Withdraw Amount
@@ -1174,7 +1277,6 @@ export default function GoalsScreen() {
               />
             </View>
 
-            {/* To Account */}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 To Account
@@ -1208,7 +1310,6 @@ export default function GoalsScreen() {
               </ScrollView>
             </View>
 
-            {/* Description */}
             <View className="mb-6">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Description (Optional)
@@ -1224,7 +1325,6 @@ export default function GoalsScreen() {
               />
             </View>
 
-            {/* Action Buttons */}
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setShowWithdrawModal(false)}
