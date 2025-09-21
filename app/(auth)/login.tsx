@@ -48,27 +48,57 @@ const AppleLogo = ({ size = 20, color = "#000" }) => (
 export default function LoginScreen() {
   const { login, signInWithGoogle, signInWithApple, authState, clearError } =
     useAuth();
+
+  // Form state
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Loading states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAuthLoader, setShowAuthLoader] = useState(false);
+  const [loaderText, setLoaderText] = useState("Loading...");
+  const [loaderSubText, setLoaderSubText] = useState("");
+
+  // Refs
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
+  // Component lifecycle logging
   useEffect(() => {
-    const syncAutofillValues = () => {
-      console.log("� Checking for autofill sync...");
-    };
-
-    const interval = setInterval(syncAutofillValues, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    console.log("🔍 LOGIN SCREEN MOUNTED");
+    return () => console.log("🔍 LOGIN SCREEN UNMOUNTED");
   }, []);
 
+  // Auth state monitor for navigation
+  useEffect(() => {
+    console.log("🔄 Login Screen: Auth state check", {
+      isLoading: authState.isLoading,
+      isAuthenticated: authState.isAuthenticated,
+      hasUser: !!authState.user,
+      email: authState.user?.email,
+    });
+
+    if (!authState.isLoading && authState.isAuthenticated && authState.user) {
+      console.log(
+        "🔄 Login Screen: User authenticated, updating loader for navigation"
+      );
+
+      // Update loader text for success
+      setLoaderText("Login Successful!");
+      setLoaderSubText("Redirecting to your dashboard...");
+
+      // Navigate to loading screen after brief delay
+      setTimeout(() => {
+        console.log("🚀 Login Screen: Navigating to loading screen");
+        setShowAuthLoader(false);
+        router.replace("/(auth)/loading");
+      }, 1500);
+    }
+  }, [authState.isLoading, authState.isAuthenticated, authState.user]);
+
+  // Form handlers
   const handleEmailFocus = () => {
     console.log("📧 Email field focused");
   };
@@ -87,17 +117,32 @@ export default function LoginScreen() {
     setFormData((prev) => ({ ...prev, password: text }));
   };
 
+  // Email/Password Login
   const handleLogin = async () => {
     if (isSubmitting || authState.isLoading) {
       console.log("🚫 Login already in progress, ignoring button press");
       return;
     }
 
+    // Validate inputs
+    if (!formData.email.trim()) {
+      Alert.alert("Missing Email", "Please enter your email address.");
+      return;
+    }
+
+    if (!formData.password.trim()) {
+      Alert.alert("Missing Password", "Please enter your password.");
+      return;
+    }
+
     setIsSubmitting(true);
+    setShowAuthLoader(true);
+    setLoaderText("Signing you in...");
+    setLoaderSubText("Authenticating your credentials");
 
     try {
-      let finalEmail = formData.email;
-      let finalPassword = formData.password;
+      let finalEmail = formData.email.trim();
+      let finalPassword = formData.password.trim();
 
       console.log("🚀 Logging in with:", {
         email: finalEmail,
@@ -110,15 +155,21 @@ export default function LoginScreen() {
       });
 
       if (success) {
-        console.log("✅ Login successful, navigating to dashboard...");
-        NavigationManager.navigateToDashboard();
+        console.log("✅ Login successful, will navigate to loading screen");
       } else if (authState.error) {
+        setShowAuthLoader(false);
         Alert.alert("Login Failed", authState.error, [
           { text: "OK", onPress: clearError },
         ]);
       }
     } catch (error) {
+      setShowAuthLoader(false);
       console.error("❌ Login error:", error);
+      Alert.alert(
+        "Login Failed",
+        "An unexpected error occurred. Please try again.",
+        [{ text: "OK", onPress: clearError }]
+      );
     } finally {
       setTimeout(() => {
         setIsSubmitting(false);
@@ -126,31 +177,72 @@ export default function LoginScreen() {
     }
   };
 
+  // Google Sign-In
   const handleGoogleSignIn = async () => {
-    const success = await signInWithGoogle();
-    if (success) {
-      console.log("✅ Google sign-in successful, navigating to dashboard...");
-      NavigationManager.navigateToDashboard();
-    } else if (authState.error) {
-      Alert.alert("Google Sign-In Failed", authState.error, [
-        { text: "OK", onPress: clearError },
-      ]);
+    try {
+      console.log("🔍 Starting Google sign-in...");
+      setShowAuthLoader(true);
+      setLoaderText("Signing in with Google...");
+      setLoaderSubText("Connecting to Google services");
+
+      const success = await signInWithGoogle();
+
+      if (success) {
+        console.log(
+          "✅ Google sign-in successful, will navigate to loading screen"
+        );
+      } else if (authState.error) {
+        setShowAuthLoader(false);
+        Alert.alert("Google Sign-In Failed", authState.error, [
+          { text: "OK", onPress: clearError },
+        ]);
+      }
+    } catch (error) {
+      setShowAuthLoader(false);
+      console.error("❌ Google sign-in error:", error);
+      Alert.alert(
+        "Google Sign-In Failed",
+        "An unexpected error occurred. Please try again.",
+        [{ text: "OK", onPress: clearError }]
+      );
     }
   };
 
+  // Apple Sign-In
   const handleAppleSignIn = async () => {
-    const success = await signInWithApple();
-    if (success) {
-      console.log("✅ Apple sign-in successful, navigating to dashboard...");
-      NavigationManager.navigateToDashboard();
-    } else if (authState.error) {
-      Alert.alert("Apple Sign-In Failed", authState.error, [
-        { text: "OK", onPress: clearError },
-      ]);
+    try {
+      console.log("🍎 Starting Apple sign-in...");
+      setShowAuthLoader(true);
+      setLoaderText("Signing in with Apple...");
+      setLoaderSubText("Connecting to Apple services");
+
+      const success = await signInWithApple();
+
+      if (success) {
+        console.log(
+          "✅ Apple sign-in successful, will navigate to loading screen"
+        );
+        // Auth state effect will handle navigation
+      } else if (authState.error) {
+        setShowAuthLoader(false);
+        Alert.alert("Apple Sign-In Failed", authState.error, [
+          { text: "OK", onPress: clearError },
+        ]);
+      }
+    } catch (error) {
+      setShowAuthLoader(false);
+      console.error("❌ Apple sign-in error:", error);
+      Alert.alert(
+        "Apple Sign-In Failed",
+        "An unexpected error occurred. Please try again.",
+        [{ text: "OK", onPress: clearError }]
+      );
     }
   };
 
+  // Navigation to signup
   const goToSignup = () => {
+    console.log("📝 Navigating to signup");
     NavigationManager.navigateToSignup();
   };
 
@@ -166,6 +258,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 px-6 pt-20">
+            {/* Header Section */}
             <MotiView
               from={{ opacity: 0, translateY: -20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -183,6 +276,7 @@ export default function LoginScreen() {
               </Text>
             </MotiView>
 
+            {/* Form Section */}
             <MotiView
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -192,6 +286,7 @@ export default function LoginScreen() {
               }}
               className="space-y-4"
             >
+              {/* Email Input */}
               <View className="mb-4">
                 <Text className="mb-4 font-medium text-white">
                   Email<Text className="text-red-500"> *</Text>
@@ -213,7 +308,7 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Password */}
+              {/* Password Input */}
               <View className="mb-6">
                 <Text className="mb-4 font-medium text-white">
                   Password<Text className="text-red-500"> *</Text>
@@ -263,7 +358,7 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Social Sign-In Options */}
+              {/* Social Sign-In Section */}
               <View className="mb-6">
                 <View className="flex-row items-center mb-6">
                   <View className="flex-1 h-px bg-gray-600" />
@@ -278,7 +373,7 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     className="flex-row items-center justify-center px-4 py-4 mb-3 bg-white shadow-md rounded-xl active:bg-gray-100"
                     onPress={handleGoogleSignIn}
-                    disabled={authState.isLoading}
+                    disabled={authState.isLoading || isSubmitting}
                   >
                     <View className="mr-3">
                       <GoogleLogo size={20} />
@@ -293,7 +388,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       className="flex-row items-center justify-center px-4 py-4 bg-black border border-gray-700 shadow-md rounded-xl active:bg-gray-900"
                       onPress={handleAppleSignIn}
-                      disabled={authState.isLoading}
+                      disabled={authState.isLoading || isSubmitting}
                     >
                       <View className="mr-3">
                         <AppleLogo size={20} color="#FFFFFF" />
