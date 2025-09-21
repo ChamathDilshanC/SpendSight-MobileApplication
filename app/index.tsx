@@ -1,5 +1,4 @@
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
-import { useRouter } from "expo-router";
 import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,14 +11,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
+import { useAuth } from "../context/FirebaseAuthContext";
 import { NavigationManager } from "../utils/navigationManager";
 
 const LOGO = require("../assets/images/SpendSightLogo.png");
-// Preload the GetStarted background image
 const GET_STARTED_BG = require("../assets/images/GetStartBG.png");
 
 export default function App() {
-  const router = useRouter();
+  const { authState } = useAuth();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [connectionType, setConnectionType] = useState<string>("");
   const [isNavigating, setIsNavigating] = useState(false);
@@ -31,7 +30,6 @@ export default function App() {
       setConnectionType(state.type || "unknown");
     });
 
-    // Initial check
     NetInfo.fetch().then((state) => {
       setIsConnected(state.isConnected ?? false);
       setConnectionType(state.type || "unknown");
@@ -40,57 +38,70 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Preload images
   useEffect(() => {
     const preloadImages = async () => {
       try {
-        // Preload the GetStarted background image
         await Image.prefetch(Image.resolveAssetSource(GET_STARTED_BG).uri);
         setImagesLoaded(true);
       } catch (error) {
         console.log("Image preloading failed:", error);
-        setImagesLoaded(true); // Continue anyway
+        setImagesLoaded(true);
       }
     };
 
     preloadImages();
   }, []);
 
-  // Modern slide navigation function
-  const navigateWithSlideAnimation = () => {
-    setIsNavigating(true);
-
-    // Add a slight delay to show the slide animation
-    setTimeout(() => {
-      // Use replace to prevent back navigation to splash screen
-      NavigationManager.navigateToGetStarted();
-    }, 300);
-  };
-
-  // Auto-navigate after 2.5 seconds if connected and images loaded
   useEffect(() => {
-    if (isConnected && imagesLoaded) {
+    if (!authState.isLoading && isConnected && imagesLoaded) {
       const timer = setTimeout(() => {
-        navigateWithSlideAnimation();
+        setIsNavigating(true);
+
+        setTimeout(() => {
+          if (authState.isAuthenticated && authState.user) {
+            console.log("✅ User authenticated, navigating to dashboard");
+            NavigationManager.navigateToDashboard();
+          } else {
+            console.log("❌ User not authenticated, showing getting started");
+            NavigationManager.navigateToGetStarted();
+          }
+        }, 300);
       }, 2500);
 
       return () => clearTimeout(timer);
     }
-  }, [isConnected, imagesLoaded, router]);
+  }, [
+    authState.isLoading,
+    authState.isAuthenticated,
+    isConnected,
+    imagesLoaded,
+  ]);
 
   const handleGetStarted = () => {
-    if (isConnected && imagesLoaded) {
-      navigateWithSlideAnimation();
+    if (isConnected && imagesLoaded && !authState.isLoading) {
+      setIsNavigating(true);
+
+      setTimeout(() => {
+        if (authState.isAuthenticated && authState.user) {
+          NavigationManager.navigateToDashboard();
+        } else {
+          NavigationManager.navigateToGetStarted();
+        }
+      }, 300);
     } else {
       Alert.alert(
         "Please Wait",
         !isConnected
           ? "Please check your internet connection and try again."
-          : "Loading assets, please wait...",
+          : authState.isLoading
+            ? "Checking authentication, please wait..."
+            : "Loading assets, please wait...",
         [{ text: "OK", style: "default" }]
       );
     }
   };
+
+  const isReady = !authState.isLoading && isConnected && imagesLoaded;
 
   return (
     <SafeAreaView
@@ -102,7 +113,6 @@ export default function App() {
 
       <View className="flex-1" style={{ backgroundColor: "#1a1a1a" }}>
         <View className="items-center justify-center flex-1">
-          {/* Main Content - Centered with slide animation */}
           <MotiView
             className="items-center justify-center flex-1"
             animate={{
@@ -123,29 +133,21 @@ export default function App() {
               }}
               className="items-center"
             >
-              {/* Logo */}
               <TouchableOpacity
                 onPress={handleGetStarted}
                 activeOpacity={0.8}
-                className="items-center justify-center p-4 mb-8 rounded-3xl"
-                style={{
-                  shadowColor: "#6366F1",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 16,
-                  elevation: 12,
-                }}
+                className="items-center justify-center p-4 mb-8"
               >
                 <MotiView
                   from={{ scale: 1 }}
                   animate={{
-                    scale: isConnected ? [1, 1.05, 1] : 1,
+                    scale: isReady ? [1, 1.05, 1] : 1,
                   }}
                   transition={{
                     scale: {
                       type: "timing",
                       duration: 1500,
-                      loop: !!isConnected,
+                      loop: !!isReady,
                     },
                   }}
                 >
@@ -157,7 +159,6 @@ export default function App() {
                 </MotiView>
               </TouchableOpacity>
 
-              {/* Connection Status */}
               <MotiView
                 from={{ opacity: 0, translateY: 20 }}
                 animate={{ opacity: 1, translateY: 0 }}
@@ -167,97 +168,67 @@ export default function App() {
                 }}
                 className="items-center"
               >
-                {/* Connection Indicator */}
-                <View
-                  className="flex-row items-center px-4 py-3 mb-4 bg-gray-900/50 rounded-2xl backdrop-blur-sm"
-                  style={{
-                    shadowColor: "#000000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 12,
-                    elevation: 8,
-                  }}
-                >
+                {/* Connection Status - No Box Styling */}
+                <View className="flex-row items-center justify-center mb-4">
                   <MotiView
                     animate={{
                       scale: [1, 1.2, 1],
-                      opacity: isConnected && imagesLoaded ? [1, 0.7, 1] : 1,
+                      opacity: isReady ? [1, 0.7, 1] : 1,
                     }}
                     transition={{
                       scale: {
                         type: "timing",
                         duration: 2000,
-                        loop: !!(isConnected && imagesLoaded),
+                        loop: !!isReady,
                       },
                       opacity: {
                         type: "timing",
                         duration: 2000,
-                        loop: !!(isConnected && imagesLoaded),
+                        loop: !!isReady,
                       },
                     }}
                     className={`w-4 h-4 rounded-full mr-3 ${
-                      isConnected === null || !imagesLoaded
-                        ? "bg-gray-400"
-                        : isConnected
-                          ? "bg-green-500"
-                          : "bg-red-500"
+                      !isReady ? "bg-gray-400" : "bg-green-500"
                     }`}
-                    style={{
-                      shadowColor:
-                        isConnected === null || !imagesLoaded
-                          ? "#9CA3AF"
-                          : isConnected
-                            ? "#10B981"
-                            : "#EF4444",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 4,
-                      elevation: 4,
-                    }}
                   />
                   <Text
-                    className={`text-base font-semibold ${
-                      isConnected === null || !imagesLoaded
-                        ? "text-gray-400"
-                        : isConnected
-                          ? "text-green-400"
-                          : "text-red-400"
+                    className={`text-base font-semibold text-center ${
+                      !isReady ? "text-gray-400" : "text-green-400"
                     }`}
                   >
-                    {isConnected === null
-                      ? "Checking connection..."
-                      : !imagesLoaded
-                        ? "Loading assets..."
-                        : isConnected
-                          ? `Connected via ${connectionType}`
-                          : "No internet connection"}
+                    {authState.isLoading
+                      ? "Checking authentication..."
+                      : isConnected === null
+                        ? "Checking connection..."
+                        : !imagesLoaded
+                          ? "Loading assets..."
+                          : !isConnected
+                            ? "No internet connection"
+                            : `Connected via ${connectionType}`}
                   </Text>
                 </View>
 
-                {/* Action Text */}
-                {isConnected && imagesLoaded && (
+                {/* Action Text - No Box Styling */}
+                {isReady && (
                   <MotiView
                     from={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
-                    className="px-6 py-3 bg-gray-800/60 rounded-2xl backdrop-blur-sm"
-                    style={{
-                      shadowColor: "#6366F1",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
+                    className="items-center"
                   >
                     <Text className="text-sm text-center text-gray-300">
                       <Text className="text-[#6366F1] font-semibold">Tap</Text>{" "}
-                      the logo to get started
+                      the logo to{" "}
+                      {authState.isAuthenticated
+                        ? "continue to dashboard"
+                        : "get started"}
                     </Text>
                   </MotiView>
                 )}
 
+                {/* Error Message - No Box Styling */}
                 {!isConnected && isConnected !== null && (
                   <MotiView
                     from={{ opacity: 0 }}
@@ -265,39 +236,10 @@ export default function App() {
                     transition={{
                       opacity: { type: "timing", duration: 400, delay: 800 },
                     }}
-                    className="px-6 py-3 border bg-red-900/40 rounded-2xl backdrop-blur-sm border-red-500/30"
-                    style={{
-                      shadowColor: "#EF4444",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
+                    className="items-center"
                   >
                     <Text className="text-sm font-medium text-center text-red-300 max-w-64">
                       Please check your internet connection to continue
-                    </Text>
-                  </MotiView>
-                )}
-
-                {isConnected && !imagesLoaded && (
-                  <MotiView
-                    from={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{
-                      opacity: { type: "timing", duration: 400, delay: 800 },
-                    }}
-                    className="px-6 py-3 border bg-gray-800/40 rounded-2xl backdrop-blur-sm border-gray-600/30"
-                    style={{
-                      shadowColor: "#6B7280",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    <Text className="text-sm font-medium text-center text-gray-400 max-w-64">
-                      Preparing your experience...
                     </Text>
                   </MotiView>
                 )}
@@ -305,28 +247,16 @@ export default function App() {
             </MotiView>
           </MotiView>
 
-          {/* Footer Info */}
-          <View className="absolute items-center px-4 bottom-20">
-            <View
-              className="px-4 py-2 bg-gray-900/50 rounded-2xl backdrop-blur-sm"
-              style={{
-                shadowColor: "#000000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              <Text className="text-xs font-medium text-gray-500">
-                SpendSight v1.0
-              </Text>
-              <Text className="mt-1 text-xs text-center text-gray-600">
-                All rights reserved By Developer : Chamath Dilshan
-              </Text>
-            </View>
+          {/* Footer - No Box Styling */}
+          <View className="absolute items-center bottom-20">
+            <Text className="text-xs font-medium text-center text-gray-500">
+              SpendSight v1.0
+            </Text>
+            <Text className="mt-1 text-xs text-center text-gray-600">
+              All rights reserved By Developer : Chamath Dilshan
+            </Text>
           </View>
 
-          {/* Hidden image for preloading */}
           <Image
             source={GET_STARTED_BG}
             className="absolute w-0 h-0 opacity-0"
