@@ -2,7 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import LottieView from "lottie-react-native";
 import { MotiView } from "moti";
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StatusBar, BackHandler } from "react-native";
+import { BackHandler, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { NavigationManager } from "../../utils/navigationManager";
@@ -30,32 +30,30 @@ export default function LoadingScreen() {
   );
 
   useEffect(() => {
-    console.log("🔄 Loading Screen: Starting loading sequence");
-
     const loadingSteps = [
       {
         step: 0,
         text: "Welcome back!",
         subText: "Preparing your account...",
-        duration: 700,
+        duration: 400,
       },
       {
         step: 1,
         text: "Loading your data...",
         subText: "Fetching your financial information",
-        duration: 700,
+        duration: 400,
       },
       {
         step: 2,
         text: "Setting up dashboard...",
         subText: "Organizing your accounts and transactions",
-        duration: 700,
+        duration: 400,
       },
       {
         step: 3,
         text: "Almost ready!",
         subText: "Finalizing your experience...",
-        duration: 700,
+        duration: 300,
       },
     ];
 
@@ -64,7 +62,6 @@ export default function LoadingScreen() {
     const runLoadingSequence = () => {
       if (currentStep < loadingSteps.length) {
         const step = loadingSteps[currentStep];
-        console.log(`📱 Loading Step ${step.step}: ${step.text}`);
 
         setLoadingStep(step.step);
         setLoadingText(step.text);
@@ -75,27 +72,19 @@ export default function LoadingScreen() {
           if (currentStep < loadingSteps.length) {
             runLoadingSequence();
           } else {
-            console.log("✅ Loading complete, navigating to dashboard");
             setTimeout(() => {
               NavigationManager.navigateToDashboard();
-            }, 500);
+            }, 200);
           }
         }, step.duration);
       }
     };
 
-    const timer = setTimeout(() => {
-      runLoadingSequence();
-    }, 500);
-
-    return () => clearTimeout(timer);
+    runLoadingSequence();
   }, []);
 
   useEffect(() => {
     if (!authState.isLoading && !authState.isAuthenticated) {
-      console.log(
-        "❌ User not authenticated during loading, redirecting to login"
-      );
       NavigationManager.navigateToLogin();
     }
   }, [authState.isLoading, authState.isAuthenticated]);
@@ -105,18 +94,18 @@ export default function LoadingScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
       <SafeAreaView className="flex-1 bg-[#ffffff]">
         <View className="items-center justify-center flex-1 px-6">
-          {/* Main Loading Container */}
+          {}
           <MotiView
             from={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{
               type: "spring",
               damping: 15,
-              stiffness: 100,
+              stiffness: 150,
             }}
             className="items-center"
           >
-            {/* Lottie Animation */}
+            {}
             <View className="mb-8">
               <LottieView
                 source={require("../../assets/animations/loading-animation.json")}
@@ -135,14 +124,14 @@ export default function LoadingScreen() {
               />
             </View>
 
-            {/* Loading Text */}
+            {}
             <MotiView
-              key={loadingStep} // Re-animate when step changes
+              key={loadingStep}
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
               transition={{
                 type: "timing",
-                duration: 600,
+                duration: 400,
               }}
               className="items-center"
             >
@@ -155,14 +144,14 @@ export default function LoadingScreen() {
               </Text>
             </MotiView>
 
-            {/* Progress Indicator */}
+            {}
             <MotiView
               from={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{
                 type: "timing",
-                duration: 800,
-                delay: 400,
+                duration: 600,
+                delay: 200,
               }}
               className="mt-12"
             >
@@ -178,7 +167,7 @@ export default function LoadingScreen() {
                     transition={{
                       type: "spring",
                       damping: 15,
-                      stiffness: 200,
+                      stiffness: 250,
                     }}
                     className="w-3 h-3 rounded-full"
                   />
@@ -187,14 +176,14 @@ export default function LoadingScreen() {
             </MotiView>
           </MotiView>
 
-          {/* App Info */}
+          {}
           <MotiView
             from={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{
               type: "timing",
-              duration: 800,
-              delay: 600,
+              duration: 600,
+              delay: 300,
             }}
             className="absolute items-center bottom-10"
           >

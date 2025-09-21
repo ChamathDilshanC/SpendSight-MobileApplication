@@ -16,7 +16,7 @@ import Svg, { Path } from "react-native-svg";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { NavigationManager } from "../../utils/navigationManager";
 
-// Google Logo Component
+
 const GoogleLogo = ({ size = 20 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
@@ -38,7 +38,7 @@ const GoogleLogo = ({ size = 20 }) => (
   </Svg>
 );
 
-// Apple Logo Component
+
 const AppleLogo = ({ size = 20, color = "#000" }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -49,82 +49,55 @@ export default function LoginScreen() {
   const { login, signInWithGoogle, signInWithApple, authState, clearError } =
     useAuth();
 
-  // Form state
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  // Loading states
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAuthLoader, setShowAuthLoader] = useState(false);
-  const [loaderText, setLoaderText] = useState("Loading...");
-  const [loaderSubText, setLoaderSubText] = useState("");
 
-  // Refs
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
+
+
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  // Component lifecycle logging
+
   useEffect(() => {
-    console.log("🔍 LOGIN SCREEN MOUNTED");
-    return () => console.log("🔍 LOGIN SCREEN UNMOUNTED");
-  }, []);
+    if (
+      !authState.isLoading &&
+      authState.isAuthenticated &&
+      authState.user &&
+      !hasNavigated
+    ) {
+      setHasNavigated(true);
 
-  // Auth state monitor for navigation
-  useEffect(() => {
-    console.log("🔄 Login Screen: Auth state check", {
-      isLoading: authState.isLoading,
-      isAuthenticated: authState.isAuthenticated,
-      hasUser: !!authState.user,
-      email: authState.user?.email,
-    });
-
-    if (!authState.isLoading && authState.isAuthenticated && authState.user) {
-      console.log(
-        "🔄 Login Screen: User authenticated, updating loader for navigation"
-      );
-
-      // Update loader text for success
-      setLoaderText("Login Successful!");
-      setLoaderSubText("Redirecting to your dashboard...");
-
-      // Navigate to loading screen after brief delay
-      setTimeout(() => {
-        console.log("🚀 Login Screen: Navigating to loading screen");
-        setShowAuthLoader(false);
-        router.replace("/(auth)/loading");
-      }, 1500);
+      router.replace("/(auth)/loading");
     }
-  }, [authState.isLoading, authState.isAuthenticated, authState.user]);
+  }, [
+    authState.isLoading,
+    authState.isAuthenticated,
+    authState.user,
+    hasNavigated,
+  ]);
 
-  // Form handlers
-  const handleEmailFocus = () => {
-    console.log("📧 Email field focused");
-  };
-
-  const handlePasswordFocus = () => {
-    console.log("🔒 Password field focused");
-  };
 
   const handleEmailChange = (text: string) => {
-    console.log("📧 Email changed manually:", text);
     setFormData((prev) => ({ ...prev, email: text }));
   };
 
   const handlePasswordChange = (text: string) => {
-    console.log("🔒 Password changed manually");
     setFormData((prev) => ({ ...prev, password: text }));
   };
 
-  // Email/Password Login
+
   const handleLogin = async () => {
     if (isSubmitting || authState.isLoading) {
-      console.log("🚫 Login already in progress, ignoring button press");
       return;
     }
 
-    // Validate inputs
+
     if (!formData.email.trim()) {
       Alert.alert("Missing Email", "Please enter your email address.");
       return;
@@ -136,70 +109,52 @@ export default function LoginScreen() {
     }
 
     setIsSubmitting(true);
-    setShowAuthLoader(true);
-    setLoaderText("Signing you in...");
-    setLoaderSubText("Authenticating your credentials");
 
     try {
-      let finalEmail = formData.email.trim();
-      let finalPassword = formData.password.trim();
-
-      console.log("🚀 Logging in with:", {
-        email: finalEmail,
-        hasPassword: !!finalPassword,
-      });
-
       const success = await login({
-        email: finalEmail,
-        password: finalPassword,
+        email: formData.email.trim(),
+        password: formData.password.trim(),
       });
 
-      if (success) {
-        console.log("✅ Login successful, will navigate to loading screen");
-      } else if (authState.error) {
-        setShowAuthLoader(false);
+
+      if (!success && authState.error) {
+        setIsSubmitting(false);
         Alert.alert("Login Failed", authState.error, [
           { text: "OK", onPress: clearError },
         ]);
       }
+
+
     } catch (error) {
-      setShowAuthLoader(false);
-      console.error("❌ Login error:", error);
+      console.error("Login error:", error);
+      setIsSubmitting(false);
       Alert.alert(
         "Login Failed",
         "An unexpected error occurred. Please try again.",
         [{ text: "OK", onPress: clearError }]
       );
-    } finally {
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 1000);
     }
   };
 
-  // Google Sign-In
-  const handleGoogleSignIn = async () => {
-    try {
-      console.log("🔍 Starting Google sign-in...");
-      setShowAuthLoader(true);
-      setLoaderText("Signing in with Google...");
-      setLoaderSubText("Connecting to Google services");
 
+  const handleGoogleSignIn = async () => {
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
       const success = await signInWithGoogle();
 
-      if (success) {
-        console.log(
-          "✅ Google sign-in successful, will navigate to loading screen"
-        );
-      } else if (authState.error) {
-        setShowAuthLoader(false);
+
+      if (!success && authState.error) {
+        setIsSubmitting(false);
         Alert.alert("Google Sign-In Failed", authState.error, [
           { text: "OK", onPress: clearError },
         ]);
       }
+
     } catch (error) {
-      setShowAuthLoader(false);
-      console.error("❌ Google sign-in error:", error);
+      console.error("Google sign-in error:", error);
+      setIsSubmitting(false);
       Alert.alert(
         "Google Sign-In Failed",
         "An unexpected error occurred. Please try again.",
@@ -208,30 +163,25 @@ export default function LoginScreen() {
     }
   };
 
-  // Apple Sign-In
-  const handleAppleSignIn = async () => {
-    try {
-      console.log("🍎 Starting Apple sign-in...");
-      setShowAuthLoader(true);
-      setLoaderText("Signing in with Apple...");
-      setLoaderSubText("Connecting to Apple services");
 
+  const handleAppleSignIn = async () => {
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
       const success = await signInWithApple();
 
-      if (success) {
-        console.log(
-          "✅ Apple sign-in successful, will navigate to loading screen"
-        );
-        // Auth state effect will handle navigation
-      } else if (authState.error) {
-        setShowAuthLoader(false);
+
+      if (!success && authState.error) {
+        setIsSubmitting(false);
         Alert.alert("Apple Sign-In Failed", authState.error, [
           { text: "OK", onPress: clearError },
         ]);
       }
+
     } catch (error) {
-      setShowAuthLoader(false);
-      console.error("❌ Apple sign-in error:", error);
+      console.error("Apple sign-in error:", error);
+      setIsSubmitting(false);
       Alert.alert(
         "Apple Sign-In Failed",
         "An unexpected error occurred. Please try again.",
@@ -240,9 +190,8 @@ export default function LoginScreen() {
     }
   };
 
-  // Navigation to signup
+
   const goToSignup = () => {
-    console.log("📝 Navigating to signup");
     NavigationManager.navigateToSignup();
   };
 
@@ -258,7 +207,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 px-6 pt-20">
-            {/* Header Section */}
+            {}
             <MotiView
               from={{ opacity: 0, translateY: -20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -276,7 +225,7 @@ export default function LoginScreen() {
               </Text>
             </MotiView>
 
-            {/* Form Section */}
+            {}
             <MotiView
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
@@ -286,7 +235,7 @@ export default function LoginScreen() {
               }}
               className="space-y-4"
             >
-              {/* Email Input */}
+              {}
               <View className="mb-4">
                 <Text className="mb-4 font-medium text-white">
                   Email<Text className="text-red-500"> *</Text>
@@ -295,7 +244,6 @@ export default function LoginScreen() {
                   ref={emailRef}
                   value={formData.email}
                   onChangeText={handleEmailChange}
-                  onFocus={handleEmailFocus}
                   placeholder="Enter your email"
                   placeholderTextColor="#666"
                   keyboardType="email-address"
@@ -308,7 +256,7 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Password Input */}
+              {}
               <View className="mb-6">
                 <Text className="mb-4 font-medium text-white">
                   Password<Text className="text-red-500"> *</Text>
@@ -317,7 +265,6 @@ export default function LoginScreen() {
                   ref={passwordRef}
                   value={formData.password}
                   onChangeText={handlePasswordChange}
-                  onFocus={handlePasswordFocus}
                   placeholder="Enter your password"
                   placeholderTextColor="#666"
                   secureTextEntry
@@ -329,7 +276,7 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Forgot Password */}
+              {}
               <TouchableOpacity
                 className="mb-8"
                 activeOpacity={0.7}
@@ -340,25 +287,21 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Login Button */}
+              {}
               <TouchableOpacity
                 onPress={handleLogin}
                 className={`py-4 rounded-xl mb-6 ${
-                  authState.isLoading || isSubmitting
-                    ? "bg-blue-400"
-                    : "bg-[#0077CC]"
+                  isSubmitting ? "bg-blue-400" : "bg-[#0077CC]"
                 }`}
                 activeOpacity={0.8}
-                disabled={authState.isLoading || isSubmitting}
+                disabled={isSubmitting}
               >
                 <Text className="text-lg font-bold text-center text-white">
-                  {authState.isLoading || isSubmitting
-                    ? "Logging in..."
-                    : "Login"}
+                  {isSubmitting ? "Signing in..." : "Login"}
                 </Text>
               </TouchableOpacity>
 
-              {/* Social Sign-In Section */}
+              {}
               <View className="mb-6">
                 <View className="flex-row items-center mb-6">
                   <View className="flex-1 h-px bg-gray-600" />
@@ -369,11 +312,15 @@ export default function LoginScreen() {
                 </View>
 
                 <View className="mb-6 space-y-3">
-                  {/* Google Sign-In Button */}
+                  {}
                   <TouchableOpacity
-                    className="flex-row items-center justify-center px-4 py-4 mb-3 bg-white shadow-md rounded-xl active:bg-gray-100"
+                    className={`flex-row items-center justify-center px-4 py-4 mb-3 shadow-md rounded-xl ${
+                      isSubmitting
+                        ? "bg-gray-200"
+                        : "bg-white active:bg-gray-100"
+                    }`}
                     onPress={handleGoogleSignIn}
-                    disabled={authState.isLoading || isSubmitting}
+                    disabled={isSubmitting}
                   >
                     <View className="mr-3">
                       <GoogleLogo size={20} />
@@ -383,12 +330,16 @@ export default function LoginScreen() {
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Apple Sign-In Button (iOS only) */}
+                  {}
                   {Platform.OS === "ios" && (
                     <TouchableOpacity
-                      className="flex-row items-center justify-center px-4 py-4 bg-black border border-gray-700 shadow-md rounded-xl active:bg-gray-900"
+                      className={`flex-row items-center justify-center px-4 py-4 border border-gray-700 shadow-md rounded-xl ${
+                        isSubmitting
+                          ? "bg-gray-800"
+                          : "bg-black active:bg-gray-900"
+                      }`}
                       onPress={handleAppleSignIn}
-                      disabled={authState.isLoading || isSubmitting}
+                      disabled={isSubmitting}
                     >
                       <View className="mr-3">
                         <AppleLogo size={20} color="#FFFFFF" />
@@ -401,7 +352,7 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* Signup Link */}
+              {}
               <View className="items-center">
                 <TouchableOpacity onPress={goToSignup} activeOpacity={0.7}>
                   <Text className="text-gray-400">

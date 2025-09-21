@@ -13,7 +13,7 @@ import { Transaction } from "../../types/finance";
 type ViewMode = "list" | "add" | "edit" | "details";
 
 export default function TransactionsScreen() {
-  const { createTransaction, transactions, refreshData } = useFinance();
+  const { createTransaction, refreshData } = useFinance();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedTransaction, setSelectedTransaction] =
@@ -141,41 +141,6 @@ export default function TransactionsScreen() {
     }
   };
 
-  const getHeaderRightComponent = () => {
-    if (viewMode === "details") {
-      return (
-        <View className="flex-row space-x-2">
-          <TouchableOpacity
-            onPress={handleEditTransaction}
-            className="p-2 bg-blue-50 rounded-xl active:bg-blue-100 active:scale-95"
-            style={{
-              shadowColor: "#3B82F6",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            }}
-          >
-            <Ionicons name="pencil" size={20} color="#3B82F6" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleDeleteTransaction}
-            className="p-2 bg-red-50 rounded-xl active:bg-red-100 active:scale-95"
-            style={{
-              shadowColor: "#EF4444",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            }}
-          >
-            <Ionicons name="trash" size={20} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
   const shouldShowBackButton = viewMode !== "list";
 
   const handleBackPress = () => {
@@ -194,13 +159,15 @@ export default function TransactionsScreen() {
         style={{ backgroundColor: "#f9fafb" }}
         edges={["top"]}
       >
-        <AppHeader
-          title={getHeaderTitle()}
-          showBackButton={shouldShowBackButton}
-          onBackPress={handleBackPress}
-          rightComponent={getHeaderRightComponent()}
-          backgroundColor="#f9fafb"
-        />
+        {/* Conditionally render AppHeader - Hide when viewMode is details */}
+        {viewMode !== "details" && (
+          <AppHeader
+            title={getHeaderTitle()}
+            showBackButton={shouldShowBackButton}
+            onBackPress={handleBackPress}
+            backgroundColor="#f9fafb"
+          />
+        )}
 
         <View className="flex-1" style={{ backgroundColor: "#f9fafb" }}>
           {viewMode === "list" && (
