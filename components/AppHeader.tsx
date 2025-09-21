@@ -40,11 +40,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
-  // Animation values for drawer
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
 
-  // Animated styles
+
   const overlayAnimatedStyle = useAnimatedStyle(() => ({
     opacity: overlayAnim.value,
   }));
