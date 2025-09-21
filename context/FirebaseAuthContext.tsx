@@ -1,12 +1,3 @@
-import {
-  createUserWithEmailAndPassword,
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-} from "firebase/auth";
-import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import React, {
   createContext,
   ReactNode,
@@ -14,8 +5,26 @@ import React, {
   useEffect,
   useReducer,
 } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert } from "react-native";
+
+// Firebase Imports
+import {
+  createUserWithEmailAndPassword,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from "firebase/auth";
+import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+
+// Google Sign-In Import
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+
+// Local Imports
 import {
   AuthContextType,
   AuthState,
@@ -29,7 +38,7 @@ import { SessionManager } from "../utils/sessionManager";
 const initialAuthState: AuthState = {
   user: null,
   isAuthenticated: false,
-  isLoading: true, // Start with true to check existing auth state
+  isLoading: true,
   error: null,
 };
 
@@ -47,10 +56,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "SET_LOADING":
       return { ...state, isLoading: action.payload };
-
     case "SET_ERROR":
       return { ...state, error: action.payload, isLoading: false };
-
     case "LOGIN_SUCCESS":
       return {
         ...state,
@@ -59,38 +66,27 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         error: null,
       };
-
     case "LOGOUT":
-      return {
-        ...initialAuthState,
-        isLoading: false,
-      };
-
+      return { ...initialAuthState, isLoading: false };
     case "UPDATE_USER":
       return {
         ...state,
         user: state.user ? { ...state.user, ...action.payload } : null,
       };
-
     case "CLEAR_ERROR":
       return { ...state, error: null };
-
     default:
       return state;
   }
 };
 
-// Create context
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Helper function to convert Firebase user to our User type
 const convertFirebaseUser = async (
-  firebaseUser: FirebaseUser,
-  additionalData?: any
+  firebaseUser: FirebaseUser
 ): Promise<User> => {
   const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
   const userData = userDoc.data();
-
   return {
     id: firebaseUser.uid,
     fullName: userData?.fullName || firebaseUser.displayName || "",
@@ -101,8 +97,7 @@ const convertFirebaseUser = async (
       ? userData.dateJoined.toDate()
       : new Date(),
     isActive: true,
-    authProvider:
-      additionalData?.authProvider || userData?.authProvider || "email",
+    authProvider: userData?.authProvider || "email",
     preferences: userData?.preferences || {
       currency: "USD",
       notifications: true,
@@ -111,7 +106,6 @@ const convertFirebaseUser = async (
   };
 };
 
-// Helper function to save user to Firestore
 const saveUserToFirestore = async (user: User): Promise<void> => {
   await setDoc(
     doc(db, "users", user.id),
@@ -128,203 +122,90 @@ const saveUserToFirestore = async (user: User): Promise<void> => {
   );
 };
 
-// Validation functions
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+const validateEmail = (email: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePassword = (password: string): boolean => password.length >= 6;
 
-const validatePassword = (password: string): boolean => {
-  return password.length >= 6;
-};
-
-// Provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
-  // Listen to Firebase auth state changes and check stored sessions
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    let isInitializing = true;
-    let initTimeout: ReturnType<typeof setTimeout>;
-
-    const initializeAuth = async () => {
-      try {
-        console.log("🔄 Initializing authentication...");
-
-        // Set a timeout to prevent infinite loading
-        initTimeout = setTimeout(() => {
-          if (isInitializing) {
-            console.log(
-              "⚠️ Auth initialization timeout, setting to not loading"
-            );
-            isInitializing = false;
-            dispatch({ type: "LOGOUT" });
-          }
-        }, 10000); // 10 second timeout
-
-        // First, check if we have a valid stored session
-        const validSession = await SessionManager.getValidSession();
-
-        if (validSession) {
-          console.log(
-            `🔄 Valid session found for ${validSession.email}, checking Firebase auth...`
-          );
-
-          // If we have a valid session, set up Firebase auth listener
-          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser && firebaseUser.email === validSession.email) {
-              try {
-                const user = await convertFirebaseUser(firebaseUser);
-                dispatch({ type: "LOGIN_SUCCESS", payload: user });
-                if (isInitializing) {
-                  console.log("✅ User restored from session");
-                  isInitializing = false;
-                  clearTimeout(initTimeout);
-                }
-              } catch (error) {
-                console.error("Error converting Firebase user:", error);
-                // If conversion fails, clear the session
-                await SessionManager.clearSession();
-                dispatch({
-                  type: "SET_ERROR",
-                  payload: "Failed to load user data",
-                });
-                if (isInitializing) {
-                  isInitializing = false;
-                  clearTimeout(initTimeout);
-                }
-              }
-            } else if (!firebaseUser) {
-              // Firebase user not found but session exists - session is invalid
-              console.log(
-                "⚠️ Session exists but Firebase user not found, clearing session"
-              );
-              await SessionManager.clearSession();
-              dispatch({ type: "LOGOUT" });
-              if (isInitializing) {
-                isInitializing = false;
-                clearTimeout(initTimeout);
-              }
-            }
-          });
-        } else {
-          console.log(
-            "🔍 No valid session found, setting up fresh auth listener"
-          );
-
-          // No valid session, set up normal auth listener
-          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-              try {
-                const user = await convertFirebaseUser(firebaseUser);
-                // Save new session when user is authenticated
-                await SessionManager.saveSession(
-                  firebaseUser.uid,
-                  firebaseUser.email || ""
-                );
-                dispatch({ type: "LOGIN_SUCCESS", payload: user });
-                if (isInitializing) {
-                  console.log("✅ User authenticated from fresh login");
-                  isInitializing = false;
-                  clearTimeout(initTimeout);
-                }
-              } catch (error) {
-                console.error("Error converting Firebase user:", error);
-                dispatch({
-                  type: "SET_ERROR",
-                  payload: "Failed to load user data",
-                });
-                if (isInitializing) {
-                  isInitializing = false;
-                  clearTimeout(initTimeout);
-                }
-              }
-            } else {
-              dispatch({ type: "LOGOUT" });
-              if (isInitializing) {
-                isInitializing = false;
-                clearTimeout(initTimeout);
-              }
-            }
-          });
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        dispatch({ type: "LOGOUT" });
-        isInitializing = false;
-        clearTimeout(initTimeout);
-      }
-    };
-
-    initializeAuth();
-
-    // Cleanup function
-    return () => {
-      isInitializing = false;
-      clearTimeout(initTimeout);
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    // Only configure Google Sign-In if the module is available (in custom dev builds)
+    try {
+      GoogleSignin.configure({
+        webClientId:
+          "45937352137-u6tkuf6i5il66miv1aj1i8g01gr7q6b2.apps.googleusercontent.com", // Web client ID from google-services.json
+        iosClientId:
+          "45937352137-8p3m4nutcplmojnot778jp6rdbdadind.apps.googleusercontent.com", // iOS client ID from GoogleService-Info.plist
+        offlineAccess: true, // Enable to get refresh token
+        hostedDomain: "", // Optional: specify domain
+        forceCodeForRefreshToken: true, // Force code for refresh token on Android
+      });
+    } catch (error) {
+      console.warn("Google Sign-In configuration failed:", error);
+      console.warn(
+        "This is expected if running in Expo Go. Use a custom development build for Google Sign-In functionality."
+      );
+    }
   }, []);
 
-  // Register function
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const user = await convertFirebaseUser(firebaseUser);
+          dispatch({ type: "LOGIN_SUCCESS", payload: user });
+        } catch (error) {
+          console.error("Auth state change error:", error);
+          dispatch({ type: "SET_ERROR", payload: "Failed to load user data." });
+        }
+      } else {
+        dispatch({ type: "LOGOUT" });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const register = async (
     registrationData: UserRegistrationData
   ): Promise<boolean> => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
+    const { fullName, email, password, confirmPassword } = registrationData;
+
+    if (!fullName.trim()) {
+      dispatch({ type: "SET_ERROR", payload: "Full name is required" });
+      return false;
+    }
+    if (!validateEmail(email)) {
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Please enter a valid email address",
+      });
+      return false;
+    }
+    if (!password || !validatePassword(password)) {
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Password must be at least 6 characters long",
+      });
+      return false;
+    }
+    if (password !== confirmPassword) {
+      dispatch({ type: "SET_ERROR", payload: "Passwords do not match" });
+      return false;
+    }
+
     try {
-      dispatch({ type: "SET_LOADING", payload: true });
-      dispatch({ type: "CLEAR_ERROR" });
-
-      const { fullName, email, password, confirmPassword } = registrationData;
-
-      // Validation
-      if (!fullName.trim()) {
-        dispatch({ type: "SET_ERROR", payload: "Full name is required" });
-        return false;
-      }
-
-      if (!validateEmail(email)) {
-        dispatch({
-          type: "SET_ERROR",
-          payload: "Please enter a valid email address",
-        });
-        return false;
-      }
-
-      if (!validatePassword(password)) {
-        dispatch({
-          type: "SET_ERROR",
-          payload: "Password must be at least 6 characters long",
-        });
-        return false;
-      }
-
-      if (password !== confirmPassword) {
-        dispatch({ type: "SET_ERROR", payload: "Passwords do not match" });
-        return false;
-      }
-
-      console.log("🔄 Creating new user account...");
-
-      // Create user with Firebase
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+      await updateProfile(userCredential.user, { displayName: fullName });
 
-      console.log("✅ Firebase user created, updating profile...");
-
-      // Update display name
-      await updateProfile(userCredential.user, {
-        displayName: fullName,
-      });
-
-      // Create user document in Firestore
       const newUser: User = {
         id: userCredential.user.uid,
         fullName: fullName.trim(),
@@ -332,222 +213,179 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         dateJoined: new Date(),
         isActive: true,
         authProvider: "email",
-        preferences: {
-          currency: "USD",
-          notifications: true,
-          darkMode: true,
-        },
+        preferences: { currency: "USD", notifications: true, darkMode: true },
       };
-
-      console.log("💾 Saving user to Firestore...");
       await saveUserToFirestore(newUser);
-
-      // Save session for new user
       await SessionManager.saveSession(
         userCredential.user.uid,
         userCredential.user.email || ""
       );
-
-      console.log("✅ New user registration completed successfully");
-
-      // The onAuthStateChanged listener will handle the state update
-      // Don't manually dispatch here to avoid race conditions
-
+      // onAuthStateChanged will handle the rest
       return true;
     } catch (error: any) {
-      console.error("Registration error:", error);
-      let errorMessage = "Registration failed. Please try again.";
-
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "An account with this email already exists";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password is too weak";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      }
-
-      dispatch({ type: "SET_ERROR", payload: errorMessage });
+      let msg = "Registration failed. Please try again.";
+      if (error.code === "auth/email-already-in-use")
+        msg = "An account with this email already exists.";
+      if (error.code === "auth/weak-password") msg = "Password is too weak.";
+      dispatch({ type: "SET_ERROR", payload: msg });
       return false;
     }
   };
 
-  // Login function
   const login = async (loginData: UserLoginData): Promise<boolean> => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
+    const { email, password } = loginData;
+
+    if (!validateEmail(email)) {
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Please enter a valid email address",
+      });
+      return false;
+    }
+    if (!password) {
+      dispatch({ type: "SET_ERROR", payload: "Password is required" });
+      return false;
+    }
+
     try {
-      // Prevent multiple simultaneous login attempts
-      if (authState.isLoading) {
-        console.log("⏳ Login already in progress, skipping...");
-        return false;
-      }
-
-      dispatch({ type: "SET_LOADING", payload: true });
-      dispatch({ type: "CLEAR_ERROR" });
-
-      const { email, password } = loginData;
-
-      // Validation
-      if (!validateEmail(email)) {
-        dispatch({
-          type: "SET_ERROR",
-          payload: "Please enter a valid email address",
-        });
-        return false;
-      }
-
-      if (!password) {
-        dispatch({ type: "SET_ERROR", payload: "Password is required" });
-        return false;
-      }
-
-      console.log(`🔐 Attempting login for: ${email}`);
-
-      // Sign in with Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.toLowerCase().trim(),
         password
       );
-
-      console.log(`✅ Firebase authentication successful for: ${email}`);
-
-      // Save session for 10 days
       await SessionManager.saveSession(
         userCredential.user.uid,
         userCredential.user.email || ""
       );
-
-      // Don't dispatch LOGIN_SUCCESS here - let the onAuthStateChanged handle it
-      console.log(`🎯 Login completed, waiting for auth state change...`);
+      // onAuthStateChanged will handle the rest
       return true;
     } catch (error: any) {
-      console.error("Login error:", error);
-      let errorMessage = "Login failed. Please try again.";
-
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email address";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed attempts. Please try again later.";
-      } else if (error.code === "auth/invalid-credential") {
-        errorMessage =
-          "Invalid email or password. Please check your credentials.";
-      } else if (error.code === "auth/network-request-failed") {
-        errorMessage = "Network error. Please check your connection.";
+      let msg = "Login failed. Please check your credentials.";
+      if (
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-credential"
+      ) {
+        msg = "Invalid email or password.";
       }
-
-      dispatch({ type: "SET_ERROR", payload: errorMessage });
+      dispatch({ type: "SET_ERROR", payload: msg });
       return false;
-    } finally {
-      // Only set loading to false on error - success will be handled by onAuthStateChanged
-      if (authState.error) {
-        dispatch({ type: "SET_LOADING", payload: false });
-      }
     }
   };
 
-  // Google Sign-In function (disabled in development)
   const signInWithGoogle = async (): Promise<boolean> => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
+
     try {
-      dispatch({ type: "SET_LOADING", payload: true });
-      dispatch({ type: "CLEAR_ERROR" });
+      // Check if GoogleSignin is available (only in custom development builds)
+      if (
+        typeof GoogleSignin === "undefined" ||
+        !GoogleSignin.hasPlayServices
+      ) {
+        throw new Error("Google Sign-In is not available in this environment");
+      }
 
-      Alert.alert(
-        "Social Sign-In Not Available",
-        "Google Sign-In is only available in production builds. Please use email and password to sign in during development.",
-        [
-          {
-            text: "OK",
-            onPress: () => dispatch({ type: "SET_LOADING", payload: false }),
-          },
-        ]
-      );
-
-      return false;
-    } catch (error: any) {
-      console.error("Google Sign-In error:", error);
-      dispatch({
-        type: "SET_ERROR",
-        payload: "Google Sign-In is not available in development mode",
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
       });
-      return false;
-    }
-  };
+      const userInfo = await GoogleSignin.signIn();
 
-  // Apple Sign-In function (disabled in development)
-  const signInWithApple = async (): Promise<boolean> => {
-    try {
-      if (Platform.OS !== "ios") {
+      // Extract the ID token from the user info
+      const idToken = userInfo.data?.idToken;
+      if (!idToken) {
+        throw new Error("No ID token received from Google Sign-In");
+      }
+
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, googleCredential);
+
+      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+      if (!userDoc.exists()) {
+        const newUser: User = {
+          id: userCredential.user.uid,
+          fullName: userCredential.user.displayName || "User",
+          email: userCredential.user.email || "",
+          profilePicture: userCredential.user.photoURL || undefined,
+          dateJoined: new Date(),
+          isActive: true,
+          authProvider: "google",
+          preferences: { currency: "USD", notifications: true, darkMode: true },
+        };
+        await saveUserToFirestore(newUser);
+      }
+      await SessionManager.saveSession(
+        userCredential.user.uid,
+        userCredential.user.email || ""
+      );
+      // onAuthStateChanged will handle the rest
+      return true;
+    } catch (error: any) {
+      if (
+        error.message === "Google Sign-In is not available in this environment"
+      ) {
         dispatch({
           type: "SET_ERROR",
-          payload: "Apple Sign-In is only available on iOS",
+          payload:
+            "Google Sign-In is only available in custom development builds. Please use email/password login or build a custom development client.",
         });
-        return false;
+      } else if (error.code !== "12501" && error.code !== "-5") {
+        // 12501 = user cancelled flow, -5 = network error
+        console.error("Google Sign-In Error: ", error);
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Google Sign-In failed. Please try again.",
+        });
+      } else {
+        dispatch({ type: "SET_LOADING", payload: false });
       }
-
-      dispatch({ type: "SET_LOADING", payload: true });
-      dispatch({ type: "CLEAR_ERROR" });
-
-      Alert.alert(
-        "Social Sign-In Not Available",
-        "Apple Sign-In is only available in production builds. Please use email and password to sign in during development.",
-        [
-          {
-            text: "OK",
-            onPress: () => dispatch({ type: "SET_LOADING", payload: false }),
-          },
-        ]
-      );
-
-      return false;
-    } catch (error: any) {
-      console.error("Apple Sign-In error:", error);
-      dispatch({
-        type: "SET_ERROR",
-        payload: "Apple Sign-In is not available in development mode",
-      });
       return false;
     }
   };
 
-  // Logout function
+  const signInWithApple = async (): Promise<boolean> => {
+    Alert.alert("Apple Sign-In is not implemented in this version.");
+    return false;
+  };
+
   const logout = async (): Promise<void> => {
     try {
+      // Sign out from Google if signed in and GoogleSignin is available
+      try {
+        if (
+          typeof GoogleSignin !== "undefined" &&
+          GoogleSignin.getCurrentUser
+        ) {
+          const currentUser = await GoogleSignin.getCurrentUser();
+          if (currentUser) {
+            await GoogleSignin.signOut();
+          }
+        }
+      } catch (googleError) {
+        // User might not be signed in with Google or GoogleSignin not available, continue with Firebase logout
+        console.log("Google sign out not needed or failed:", googleError);
+      }
+
       await signOut(auth);
-      // Clear stored session
       await SessionManager.clearSession();
-      console.log("✅ User logged out and session cleared");
+      // onAuthStateChanged will handle the rest
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
 
-  // Clear error function
-  const clearError = (): void => {
-    dispatch({ type: "CLEAR_ERROR" });
-  };
+  const clearError = () => dispatch({ type: "CLEAR_ERROR" });
 
-  // Update user function
   const updateUser = async (userData: Partial<User>): Promise<void> => {
+    if (!authState.user) return;
     try {
-      if (!authState.user) return;
-
-      const updatedUser = { ...authState.user, ...userData };
-
-      // Update in Firestore
-      await updateDoc(doc(db, "users", updatedUser.id), {
-        ...userData,
-        dateJoined: userData.dateJoined
-          ? Timestamp.fromDate(userData.dateJoined)
-          : undefined,
-      });
-
+      await updateDoc(doc(db, "users", authState.user.id), { ...userData });
       dispatch({ type: "UPDATE_USER", payload: userData });
     } catch (error) {
       console.error("Update user error:", error);
-      dispatch({ type: "SET_ERROR", payload: "Failed to update user profile" });
+      dispatch({ type: "SET_ERROR", payload: "Failed to update profile." });
     }
   };
 
@@ -567,7 +405,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
-// Custom hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
