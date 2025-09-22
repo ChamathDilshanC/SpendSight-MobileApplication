@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { MotiView } from "moti";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -37,10 +37,113 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
 
+
+  const autoSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isUserInteracting = useRef(false);
+  const componentMounted = useRef(true);
+  const [autoSwipeEnabled, setAutoSwipeEnabled] = useState(true);
+
+
+  const autoSwipeInterval = 4000;
+  const loopAutoSwipe = true;
+
   useDashboardBackButton(true);
 
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
+
+
+  const clearAutoSwipeTimer = useCallback(() => {
+    if (autoSwipeTimerRef.current) {
+      clearTimeout(autoSwipeTimerRef.current);
+      autoSwipeTimerRef.current = null;
+    }
+  }, []);
+
+
+  const doAutoSwipe = useCallback(() => {
+    if (
+      !componentMounted.current ||
+      !accounts ||
+      accounts.length <= 1 ||
+      isUserInteracting.current ||
+      !autoSwipeEnabled
+    ) {
+      return;
+    }
+
+    let nextIndex = currentAccountIndex + 1;
+    if (nextIndex >= accounts.length) {
+      if (loopAutoSwipe) {
+        nextIndex = 0;
+      } else {
+        return;
+      }
+    }
+
+    setCurrentAccountIndex(nextIndex);
+  }, [currentAccountIndex, accounts, loopAutoSwipe, autoSwipeEnabled]);
+
+
+  const startAutoSwipeTimer = useCallback(() => {
+    if (!autoSwipeEnabled || !accounts || accounts.length <= 1) {
+      return;
+    }
+
+    clearAutoSwipeTimer();
+
+    if (componentMounted.current && !isUserInteracting.current) {
+      autoSwipeTimerRef.current = setTimeout(() => {
+        if (componentMounted.current && !isUserInteracting.current) {
+          doAutoSwipe();
+        }
+      }, autoSwipeInterval);
+    }
+  }, [
+    autoSwipeEnabled,
+    accounts,
+    autoSwipeInterval,
+    clearAutoSwipeTimer,
+    doAutoSwipe,
+  ]);
+
+
+  const toggleAutoSwipe = useCallback(() => {
+    setAutoSwipeEnabled((prev) => {
+      const newState = !prev;
+      if (!newState) {
+        clearAutoSwipeTimer();
+      } else {
+        startAutoSwipeTimer();
+      }
+      return newState;
+    });
+  }, [clearAutoSwipeTimer, startAutoSwipeTimer]);
+
+
+  useEffect(() => {
+    if (autoSwipeEnabled && accounts && accounts.length > 1) {
+      startAutoSwipeTimer();
+    } else {
+      clearAutoSwipeTimer();
+    }
+
+    return clearAutoSwipeTimer;
+  }, [
+    currentAccountIndex,
+    autoSwipeEnabled,
+    accounts,
+    startAutoSwipeTimer,
+    clearAutoSwipeTimer,
+  ]);
+
+
+  useEffect(() => {
+    return () => {
+      componentMounted.current = false;
+      clearAutoSwipeTimer();
+    };
+  }, [clearAutoSwipeTimer]);
 
   useEffect(() => {
     const checkFirstTimeUser = async () => {
@@ -195,48 +298,51 @@ const DashboardContent = () => {
     };
   });
 
-
-const handleLogout = async () => {
-  Alert.alert(
-    "Logout Confirmation",
-    "You will be signed out of your SpendSight account. Your data will be saved and you can sign back in anytime.",
-    [
-      {
-        text: "Stay Logged In",
-        style: "cancel",
-        onPress: () => {
-          console.log("🚫 User chose to stay logged in");
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout Confirmation",
+      "You will be signed out of your SpendSight account. Your data will be saved and you can sign back in anytime.",
+      [
+        {
+          text: "Stay Logged In",
+          style: "cancel",
+          onPress: () => {
+            console.log("🚫 User chose to stay logged in");
+          },
         },
-      },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            console.log("🚪 User confirmed logout, proceeding...");
-            await logout();
-            console.log(
-              "✅ Logout successful, auth state will handle navigation"
-            );
-          } catch (error) {
-            console.error("❌ Logout error:", error);
-            Alert.alert(
-              "Logout Failed",
-              "An error occurred while logging out. Please try again.",
-              [{ text: "OK", style: "default" }]
-            );
-          }
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              console.log("🚪 User confirmed logout, proceeding...");
+              await logout();
+              console.log(
+                "✅ Logout successful, auth state will handle navigation"
+              );
+            } catch (error) {
+              console.error("❌ Logout error:", error);
+              Alert.alert(
+                "Logout Failed",
+                "An error occurred while logging out. Please try again.",
+                [{ text: "OK", style: "default" }]
+              );
+            }
+          },
         },
-      },
-    ],
-    {
-      cancelable: true, // Allows tapping outside to cancel
-      userInterfaceStyle: "light", // Optional: force light/dark style
-    }
-  );
-};
+      ],
+      {
+        cancelable: true,
+        userInterfaceStyle: "light",
+      }
+    );
+  };
 
   const openDrawer = () => {
+
+    isUserInteracting.current = true;
+    clearAutoSwipeTimer();
+
     setIsDrawerVisible(true);
 
     slideAnim.value = withTiming(0, {
@@ -263,12 +369,37 @@ const handleLogout = async () => {
 
     setTimeout(() => {
       setIsDrawerVisible(false);
+
+      if (componentMounted.current) {
+        isUserInteracting.current = false;
+        if (autoSwipeEnabled) {
+          startAutoSwipeTimer();
+        }
+      }
     }, 300);
   };
 
-  const handleAccountSwipe = (newIndex: number) => {
-    setCurrentAccountIndex(newIndex);
-  };
+
+  const handleAccountSwipe = useCallback(
+    (newIndex: number) => {
+
+      isUserInteracting.current = true;
+      clearAutoSwipeTimer();
+
+      setCurrentAccountIndex(newIndex);
+
+
+      setTimeout(() => {
+        if (componentMounted.current) {
+          isUserInteracting.current = false;
+          if (autoSwipeEnabled) {
+            startAutoSwipeTimer();
+          }
+        }
+      }, 2000);
+    },
+    [clearAutoSwipeTimer, startAutoSwipeTimer, autoSwipeEnabled]
+  );
 
   const handleNavigationShortcut = (route: string) => {
     console.log(`🚀 Dashboard: Navigating to ${route}`);
@@ -279,7 +410,7 @@ const handleLogout = async () => {
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
       <SafeAreaView className="flex-1 bg-gray-50">
-        {/* Header with hamburger menu */}
+        {}
         <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
           <TouchableOpacity
             className="p-3 rounded-lg min-w-[44px] min-h-[44px] justify-center items-center active:bg-gray-100"
@@ -312,13 +443,29 @@ const handleLogout = async () => {
           </TouchableOpacity>
         </View>
 
-        {/* Main content */}
+        {}
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
+          onScrollBeginDrag={() => {
+
+            isUserInteracting.current = true;
+            clearAutoSwipeTimer();
+          }}
+          onScrollEndDrag={() => {
+
+            setTimeout(() => {
+              if (componentMounted.current) {
+                isUserInteracting.current = false;
+                if (autoSwipeEnabled) {
+                  startAutoSwipeTimer();
+                }
+              }
+            }, 1000);
+          }}
         >
-          {/* Welcome Section */}
+          {}
           <MotiView
             from={{ opacity: 0, translateY: -20 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -327,7 +474,7 @@ const handleLogout = async () => {
               duration: 600,
               delay: 200,
             }}
-            className="px-5 pt-6 pb-4 "
+            className="px-5 pt-6 pb-4"
           >
             <Text className="pb-1 pl-4 text-2xl font-bold text-gray-900">
               Welcome back,
@@ -340,7 +487,53 @@ const handleLogout = async () => {
             </Text>
           </MotiView>
 
-          {/* Animated Account Cards */}
+          {}
+          {accounts && accounts.length > 1 && (
+            <MotiView
+              from={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                type: "spring",
+                damping: 15,
+                stiffness: 100,
+                delay: 300,
+              }}
+              className="flex-row items-center justify-center mb-3"
+            >
+              <TouchableOpacity
+                onPress={toggleAutoSwipe}
+                className="flex-row items-center px-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm"
+                activeOpacity={0.7}
+              >
+                <MotiView
+                  animate={{
+                    rotate:
+                      autoSwipeEnabled && !isUserInteracting.current
+                        ? "360deg"
+                        : "0deg",
+                  }}
+                  transition={{
+                    type: "timing",
+                    duration: autoSwipeInterval,
+                    loop: autoSwipeEnabled && !isUserInteracting.current,
+                  }}
+                >
+                  <Ionicons
+                    name={autoSwipeEnabled ? "pause" : "play"}
+                    size={14}
+                    color={autoSwipeEnabled ? "#EF4444" : "#10B981"}
+                  />
+                </MotiView>
+                <Text
+                  className={`text-xs font-medium ml-2 ${autoSwipeEnabled ? "text-red-600" : "text-green-600"}`}
+                >
+                  {autoSwipeEnabled ? "Auto-Playing" : "Paused"}
+                </Text>
+              </TouchableOpacity>
+            </MotiView>
+          )}
+
+          {}
           <MotiView
             from={{ opacity: 0, translateY: 30 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -359,7 +552,7 @@ const handleLogout = async () => {
             />
           </MotiView>
 
-          {/* Navigation Shortcuts */}
+          {}
           <MotiView
             from={{ opacity: 0, translateY: 40 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -373,7 +566,7 @@ const handleLogout = async () => {
             <NavigationShortcuts onNavigate={handleNavigationShortcut} />
           </MotiView>
 
-          {/* Recent Activity Section */}
+          {}
           <MotiView
             from={{ opacity: 0, translateY: 50 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -400,7 +593,7 @@ const handleLogout = async () => {
             </View>
           </MotiView>
 
-          {/* Footer */}
+          {}
           <View className="items-center px-5 mt-8">
             <Text className="text-xs text-gray-600">SpendSight v1.0</Text>
             <Text className="mt-1 text-xs text-gray-600">
@@ -409,7 +602,7 @@ const handleLogout = async () => {
           </View>
         </ScrollView>
 
-        {/* Navigation Drawer with error handling */}
+        {}
         {isDrawerVisible && (
           <NavigationDrawer
             isVisible={isDrawerVisible}
@@ -422,7 +615,6 @@ const handleLogout = async () => {
     </>
   );
 };
-
 
 const Dashboard = () => {
   return (
