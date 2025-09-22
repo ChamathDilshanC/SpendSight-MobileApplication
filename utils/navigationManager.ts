@@ -114,7 +114,7 @@ export class NavigationManager {
     this.safeNavigate("/(auth)/login", "replace");
   }
 
-  
+
   static navigateToAuth(): void {
     this.safeNavigate("/(auth)/login", "replace");
   }
