@@ -46,16 +46,12 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
         ? "flex-row items-center py-4 px-5 border-b border-emerald-100 min-h-[64px] bg-emerald-50"
         : "flex-row items-center py-4 px-5 border-b border-gray-100 min-h-[64px] active:bg-gray-50"
     }
-    onPress={() => {
-      console.log(`🎯 DrawerItem clicked: ${title}`);
-      onPress();
-    }}
+    onPress={onPress}
     activeOpacity={0.7}
     style={{
       backgroundColor: isActive ? "#ECFDF5" : "transparent",
     }}
   >
-    {}
     <View className="items-center justify-center w-8 h-8 mr-4">
       <Ionicons
         name={icon as any}
@@ -74,7 +70,6 @@ const DrawerItem: React.FC<DrawerItemProps> = ({
       {title}
     </Text>
 
-    {}
     <Ionicons
       name="chevron-forward-outline"
       size={16}
@@ -112,7 +107,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           );
           setProfileImage(imageUrl);
         } catch (error) {
-          console.error("❌ Failed to load profile image:", error);
+          console.error("Failed to load profile image:", error);
         }
       }
     };
@@ -121,11 +116,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   }, [authState?.user?.id, authState?.user?.profileImage]);
 
 
-  console.log("🎭 NavigationDrawer render - isVisible:", isVisible);
-
-
   if (!authState || !authState.user) {
-    console.log("❌ NavigationDrawer: authState or user is missing");
     return null;
   }
 
@@ -136,20 +127,17 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   };
 
   const handleProfileImageUpload = (imageUrl: string) => {
-    console.log("✅ Profile image uploaded successfully:", imageUrl);
     setProfileImage(imageUrl);
-
 
 
   };
 
   const handleProfileImageError = (error: string) => {
-    console.error("❌ Profile image upload error:", error);
+    console.error("Profile image upload error:", error);
     Alert.alert("Upload Error", error);
   };
 
   const navigateToScreen = (screen: string) => {
-    console.log(`🎯 NavigationDrawer: User clicked on ${screen}`);
     onClose();
 
 
@@ -157,45 +145,29 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
       switch (screen) {
         case "dashboard":
         case "expenses":
-
-          console.log(`📱 Navigating to ${screen}...`);
           NavigationManager.navigateToDashboardSection();
           break;
         case "accounts":
-
-          console.log(`📱 Navigating to accounts...`);
           NavigationManager.navigateToAccountsSection();
           break;
         case "categories":
-
-          console.log(`📱 Navigating to categories...`);
           NavigationManager.navigateToCategoriesSection();
           break;
         case "help":
-
-          console.log(`📱 Navigating to help...`);
           NavigationManager.navigateToHelpSection();
           break;
         case "transactions":
-
-          console.log(`📱 Navigating to transactions...`);
           NavigationManager.navigateToTransactionSection();
           break;
         case "history":
-
-          console.log(`📱 Navigating to history...`);
           NavigationManager.navigateToHistorySection();
           break;
         case "goals":
-
-          console.log(`📱 Navigating to goals...`);
           NavigationManager.navigateToGoalsSection();
           break;
         case "analytics":
         case "budget":
         case "notifications":
-
-          console.log(`Navigate to ${screen} - Feature coming soon!`);
           Alert.alert(
             "🚀 Coming Soon",
             `${screen.charAt(0).toUpperCase() + screen.slice(1)} feature is under development and will be available in a future update.`,
@@ -203,27 +175,21 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
           );
           break;
         case "settings":
-
-          console.log(`📱 Navigating to settings...`);
           NavigationManager.navigateToSettingsSection();
           break;
         default:
-          console.log(`Navigate to ${screen} - Unknown route`);
           NavigationManager.navigateToDashboardHome();
       }
     }, 350);
   };
 
   if (!isVisible) {
-    console.log("🚫 NavigationDrawer not visible, returning null");
     return null;
   }
 
-  console.log("✅ NavigationDrawer is visible, rendering drawer");
-
 
   if (!overlayAnimatedStyle || !drawerAnimatedStyle) {
-    console.error("❌ Animated styles are missing!", {
+    console.error("Animated styles are missing!", {
       overlayAnimatedStyle,
       drawerAnimatedStyle,
     });
@@ -448,7 +414,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
       </>
     );
   } catch (error) {
-    console.error("❌ NavigationDrawer render error:", error);
+    console.error("NavigationDrawer render error:", error);
     return null;
   }
 };
