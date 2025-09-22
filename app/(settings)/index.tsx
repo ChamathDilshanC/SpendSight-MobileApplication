@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -37,7 +38,10 @@ const SettingItem: React.FC<SettingItemProps> = ({
 }) => (
   <TouchableOpacity
     className="flex-row items-center px-6 py-4 bg-white border-b border-gray-100"
-    onPress={onPress}
+    onPress={() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }}
     activeOpacity={0.7}
   >
     <View className="items-center justify-center w-10 h-10 mr-4 bg-gray-100 rounded-full">
@@ -60,40 +64,32 @@ const SettingItem: React.FC<SettingItemProps> = ({
 );
 
 export default function SettingsScreen() {
-  // Redirect hardware back button to dashboard
   useDashboardBackButton(true);
-  const { authState, logout } = useAuth();
+  const { authState, logout, updateUser } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  // Load user's profile image
   useEffect(() => {
     const loadProfileImage = async () => {
       if (authState?.user?.id) {
         try {
-          console.log("🖼️ Loading profile image for user:", authState.user.id);
-
           const existingImage =
             authState.user.profileImage || authState.user.profilePicture;
           if (existingImage) {
-            console.log("✅ Found existing image in authState:", existingImage);
             setProfileImage(existingImage);
             return;
           }
 
-          console.log("🔍 Fetching profile image from Firestore...");
           const imageUrl = await UserProfileService.getUserProfileImage(
             authState.user.id
           );
 
           if (imageUrl) {
-            console.log("✅ Profile image loaded from Firestore:", imageUrl);
             setProfileImage(imageUrl);
           } else {
-            console.log("ℹ️ No profile image found for user");
             setProfileImage(null);
           }
         } catch (error) {
-          console.error("❌ Failed to load profile image:", error);
+          console.error("Failed to load profile image:", error);
           setProfileImage(null);
         }
       }
@@ -103,26 +99,24 @@ export default function SettingsScreen() {
   }, [authState?.user?.id, authState?.user?.profileImage]);
 
   const handleProfileImageUpload = (imageUrl: string) => {
-    console.log(
-      "✅ Profile image uploaded successfully in settings:",
-      imageUrl
-    );
     setProfileImage(imageUrl);
+    // Update the user's profile image in the auth context
+    updateUser({ profileImage: imageUrl });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Force a small delay then confirm the image is set
     setTimeout(() => {
-      console.log("🔄 Profile image state after upload:", profileImage);
+      console.log("Profile image state after upload:", profileImage);
     }, 100);
-
-    Alert.alert("Success", "Profile image updated successfully!");
   };
 
   const handleProfileImageError = (error: string) => {
-    console.error("❌ Profile image upload error in settings:", error);
+    console.error("Profile image upload error in settings:", error);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     Alert.alert("Upload Error", error);
   };
 
   const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -170,10 +164,10 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       <AppHeader title="Settings" />
       <ScrollView className="flex-1 bg-gray-50">
-        {/* Profile Section - This matches your hand-drawn sketch */}
+        {/* Profile Section */}
         <View className="px-6 py-8 bg-white">
           <View className="flex-row items-center">
-            {/* Profile Image - Same as your sketch layout */}
+            {/* Profile Image Picker */}
             <ProfileImagePicker
               userId={authState.user.id}
               onImageUploaded={handleProfileImageUpload}
@@ -197,14 +191,14 @@ export default function SettingsScreen() {
                   </View>
                 )}
 
-                {/* Camera Icon Overlay */}
+                {/* Camera Icon */}
                 <View className="absolute bottom-0 right-0 p-1 bg-white border-2 border-gray-100 rounded-full">
                   <Ionicons name="camera" size={14} color="#6B7280" />
                 </View>
               </View>
             </ProfileImagePicker>
 
-            {/* User Info - Same as your sketch layout */}
+            {/* User Info */}
             <View className="flex-1 ml-4">
               <Text className="text-xl font-bold text-gray-900">
                 {authState.user.fullName || "User Name"}
@@ -215,30 +209,25 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Tap to change photo hint */}
+          {/* Profile Photo Instructions */}
           <Text className="mt-4 text-sm text-center text-gray-500">
             Tap profile photo to change
           </Text>
         </View>
 
-        {/* Settings Options */}
+        {/* Account Settings */}
         <View className="mt-6">
           <Text className="px-6 py-2 text-sm font-medium tracking-wide text-gray-500 uppercase">
             Account
           </Text>
-
           <SettingItem
             icon="person-circle-outline"
             title="Edit Profile"
             subtitle="Update your personal information"
             onPress={() => {
-              Alert.alert(
-                "Coming Soon",
-                "Profile editing feature is coming soon!"
-              );
+              router.push("/(settings)/edit-profile");
             }}
           />
-
           <SettingItem
             icon="notifications-outline"
             title="Notifications"
@@ -247,7 +236,6 @@ export default function SettingsScreen() {
               Alert.alert("Coming Soon", "Notification settings coming soon!");
             }}
           />
-
           <SettingItem
             icon="shield-checkmark-outline"
             title="Privacy & Security"
@@ -319,7 +307,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Logout Section */}
+        {/* Sign Out */}
         <View className="mt-6 mb-8">
           <SettingItem
             icon="log-out-outline"
