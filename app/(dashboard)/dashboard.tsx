@@ -479,11 +479,11 @@ const DashboardContent = () => {
             <Text className="pb-1 pl-4 text-2xl font-bold text-gray-900">
               Welcome back,
             </Text>
-            <Text className="pb-2 pl-4 text-base text-gray-600">
+            <Text className="pb-2 pl-4 text-base text-gray-600 ">
               {authState?.user?.fullName &&
               typeof authState.user.fullName === "string"
                 ? authState.user.fullName
-                : authState?.user?.email?.split("@")[0] || "User"}
+                : authState?.user?.email?.split("@")[0] || "User"} , have a great day ✌️!
             </Text>
           </MotiView>
 
