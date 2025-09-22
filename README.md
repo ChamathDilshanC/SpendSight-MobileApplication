@@ -15,11 +15,19 @@
 
 ### 📲 Get the App Now
 
-[![📱 Download APK](https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black)]([https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing](https://drive.google.com/drive/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W?dmr=1&ec=wgc-drive-globalnav-goto))
+[![📱 Download APK](https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black)](https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W)
+
 
 > *Direct download from Google Drive • No registration required*
-
 </div>
+
+
+#### 📋 Installation Instructions:
+1. Download the APK from the link above
+2. Enable "Unknown Sources" in your Android settings
+3. Install the APK file
+4. Open SpendSight and start managing your finances! 💰
+
 
 ## Overview
 
