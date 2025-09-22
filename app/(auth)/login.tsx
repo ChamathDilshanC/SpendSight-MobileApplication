@@ -16,7 +16,6 @@ import Svg, { Path } from "react-native-svg";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { NavigationManager } from "../../utils/navigationManager";
 
-
 const GoogleLogo = ({ size = 20 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
@@ -38,7 +37,6 @@ const GoogleLogo = ({ size = 20 }) => (
   </Svg>
 );
 
-
 const AppleLogo = ({ size = 20, color = "#000" }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -49,20 +47,23 @@ export default function LoginScreen() {
   const { login, signInWithGoogle, signInWithApple, authState, clearError } =
     useAuth();
 
-
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasNavigated, setHasNavigated] = useState(false);
-
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
+
+  useEffect(() => {
+    if (!authState.isLoading) {
+      setIsSubmitting(false);
+    }
+  }, [authState.isLoading]);
 
   useEffect(() => {
     if (
@@ -72,7 +73,6 @@ export default function LoginScreen() {
       !hasNavigated
     ) {
       setHasNavigated(true);
-
       router.replace("/(auth)/loading");
     }
   }, [
@@ -83,6 +83,12 @@ export default function LoginScreen() {
   ]);
 
 
+  useEffect(() => {
+    if (authState.error) {
+      setIsSubmitting(false);
+    }
+  }, [authState.error]);
+
   const handleEmailChange = (text: string) => {
     setFormData((prev) => ({ ...prev, email: text }));
   };
@@ -91,12 +97,25 @@ export default function LoginScreen() {
     setFormData((prev) => ({ ...prev, password: text }));
   };
 
+  const showErrorAlert = (title: string, message: string) => {
+    Alert.alert(title, message, [
+      {
+        text: "OK",
+        onPress: () => {
+          clearError();
+          setIsSubmitting(false);
+        },
+      },
+    ]);
+  };
 
   const handleLogin = async () => {
     if (isSubmitting || authState.isLoading) {
       return;
     }
 
+
+    clearError();
 
     if (!formData.email.trim()) {
       Alert.alert("Missing Email", "Please enter your email address.");
@@ -111,85 +130,116 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
+      console.log("🔐 Attempting login...");
+
       const success = await login({
         email: formData.email.trim(),
         password: formData.password.trim(),
       });
 
+      console.log("🔐 Login result:", success);
 
-      if (!success && authState.error) {
+
+      if (!success) {
         setIsSubmitting(false);
-        Alert.alert("Login Failed", authState.error, [
-          { text: "OK", onPress: clearError },
-        ]);
+
+
+        const errorMessage =
+          authState.error || "Login failed. Please check your credentials.";
+
+
+        if (errorMessage.includes("auth/invalid-credential")) {
+          showErrorAlert(
+            "Invalid Credentials",
+            "The email or password you entered is incorrect. Please check your credentials and try again."
+          );
+        } else if (errorMessage.includes("auth/user-not-found")) {
+          showErrorAlert(
+            "Account Not Found",
+            "No account found with this email address. Please check your email or sign up for a new account."
+          );
+        } else if (errorMessage.includes("auth/wrong-password")) {
+          showErrorAlert(
+            "Incorrect Password",
+            "The password you entered is incorrect. Please try again or reset your password."
+          );
+        } else if (errorMessage.includes("auth/user-disabled")) {
+          showErrorAlert(
+            "Account Disabled",
+            "This account has been disabled. Please contact support for assistance."
+          );
+        } else if (errorMessage.includes("auth/too-many-requests")) {
+          showErrorAlert(
+            "Too Many Attempts",
+            "Too many failed login attempts. Please try again later or reset your password."
+          );
+        } else {
+          showErrorAlert("Login Failed", errorMessage);
+        }
       }
-
-
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       setIsSubmitting(false);
-      Alert.alert(
+      showErrorAlert(
         "Login Failed",
-        "An unexpected error occurred. Please try again.",
-        [{ text: "OK", onPress: clearError }]
+        "An unexpected error occurred. Please try again."
       );
     }
   };
-
 
   const handleGoogleSignIn = async () => {
     if (isSubmitting) return;
 
     try {
       setIsSubmitting(true);
+      clearError();
+
+      console.log("🔐 Attempting Google sign-in...");
+
       const success = await signInWithGoogle();
 
-
-      if (!success && authState.error) {
+      if (!success) {
         setIsSubmitting(false);
-        Alert.alert("Google Sign-In Failed", authState.error, [
-          { text: "OK", onPress: clearError },
-        ]);
+        const errorMessage =
+          authState.error || "Google sign-in failed. Please try again.";
+        showErrorAlert("Google Sign-In Failed", errorMessage);
       }
-
     } catch (error) {
-      console.error("Google sign-in error:", error);
+      console.error("❌ Google sign-in error:", error);
       setIsSubmitting(false);
-      Alert.alert(
+      showErrorAlert(
         "Google Sign-In Failed",
-        "An unexpected error occurred. Please try again.",
-        [{ text: "OK", onPress: clearError }]
+        "An unexpected error occurred. Please try again."
       );
     }
   };
-
 
   const handleAppleSignIn = async () => {
     if (isSubmitting) return;
 
     try {
       setIsSubmitting(true);
+      clearError();
+
+      console.log("🔐 Attempting Apple sign-in...");
+
       const success = await signInWithApple();
 
-
-      if (!success && authState.error) {
+      if (!success) {
         setIsSubmitting(false);
-        Alert.alert("Apple Sign-In Failed", authState.error, [
-          { text: "OK", onPress: clearError },
-        ]);
+        const errorMessage =
+          authState.error || "Apple sign-in failed. Please try again.";
+        showErrorAlert("Apple Sign-In Failed", errorMessage);
       }
-
     } catch (error) {
-      console.error("Apple sign-in error:", error);
+      console.error("❌ Apple sign-in error:", error);
       setIsSubmitting(false);
-      Alert.alert(
+      showErrorAlert(
         "Apple Sign-In Failed",
-        "An unexpected error occurred. Please try again.",
-        [{ text: "OK", onPress: clearError }]
+        "An unexpected error occurred. Please try again."
       );
     }
   };
-
 
   const goToSignup = () => {
     NavigationManager.navigateToSignup();
@@ -252,6 +302,7 @@ export default function LoginScreen() {
                   textContentType="emailAddress"
                   autoCorrect={false}
                   importantForAutofill="yes"
+                  editable={!isSubmitting}
                   className="bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#0077CC]"
                 />
               </View>
@@ -272,6 +323,7 @@ export default function LoginScreen() {
                   textContentType="password"
                   autoCorrect={false}
                   importantForAutofill="yes"
+                  editable={!isSubmitting}
                   className="bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-700 focus:border-[#0077CC]"
                 />
               </View>
@@ -281,8 +333,11 @@ export default function LoginScreen() {
                 className="mb-8"
                 activeOpacity={0.7}
                 onPress={() => router.push("/(frogetPassword)")}
+                disabled={isSubmitting}
               >
-                <Text className="text-[#0077CC] text-right">
+                <Text
+                  className={`text-right ${isSubmitting ? "text-gray-500" : "text-[#0077CC]"}`}
+                >
                   Forgot Password?
                 </Text>
               </TouchableOpacity>
@@ -291,13 +346,17 @@ export default function LoginScreen() {
               <TouchableOpacity
                 onPress={handleLogin}
                 className={`py-4 rounded-xl mb-6 ${
-                  isSubmitting ? "bg-blue-400" : "bg-[#0077CC]"
+                  isSubmitting || authState.isLoading
+                    ? "bg-blue-400"
+                    : "bg-[#0077CC]"
                 }`}
                 activeOpacity={0.8}
-                disabled={isSubmitting}
+                disabled={isSubmitting || authState.isLoading}
               >
                 <Text className="text-lg font-bold text-center text-white">
-                  {isSubmitting ? "Signing in..." : "Login"}
+                  {isSubmitting || authState.isLoading
+                    ? "Signing in..."
+                    : "Login"}
                 </Text>
               </TouchableOpacity>
 
@@ -354,10 +413,16 @@ export default function LoginScreen() {
 
               {}
               <View className="items-center">
-                <TouchableOpacity onPress={goToSignup} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={goToSignup}
+                  activeOpacity={0.7}
+                  disabled={isSubmitting}
+                >
                   <Text className="text-gray-400">
                     Don't have an account?{" "}
-                    <Text className="text-[#0077CC] font-semibold">
+                    <Text
+                      className={`font-semibold ${isSubmitting ? "text-gray-500" : "text-[#0077CC]"}`}
+                    >
                       Sign Up
                     </Text>
                   </Text>
