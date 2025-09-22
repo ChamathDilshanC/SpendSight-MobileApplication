@@ -7,10 +7,15 @@
     "icon": "./assets/images/SpendSightLogo.png",
     "scheme": "spendsight",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chamathdilshan.spendsight"
+      "bundleIdentifier": "com.chamathdilshan.spendsight",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
