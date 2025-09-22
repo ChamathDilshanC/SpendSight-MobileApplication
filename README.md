@@ -1,34 +1,185 @@
 # SpendSight – Mobile Application
 
-> Personal finance tracker built with Expo + React Native, Firebase Auth/Firestore/Storage, and a clean service architecture.
-
-## 🎬 Experience the App
+> 🚀 **Modern Personal Finance Tracker** | Built with Expo + React Native, Firebase Auth/Firestore/Storage, and clean service architecture.
 
 <div align="center">
 
-### 📱 Live Demo
-> *Coming Soon - Video demonstration of all features*
+## 🎬 Experience the App
 
-[![🎥 Watch Demo](https://img.shields.io/badge/🎥_Watch_Demo-Coming_Soon-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=black)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+<!-- Demo Video Section -->
+<table>
+<tr>
+<td align="center" width="50%">
+
+### 🎥 Live Demo
+*Interactive video walkthrough coming soon*
+
+<a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/🎥_Watch_Demo-Coming_Soon-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=1a1a1a" alt="Watch Demo">
+</a>
+
+*Full feature demonstration • UI/UX showcase*
+
+</td>
+<td align="center" width="50%">
+
+### 📱 Download Now
+*Ready to install • No registration needed*
+
+<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=1a1a1a" alt="Download APK">
+</a>
+
+*Direct from Google Drive • Instant access*
+
+</td>
+</tr>
+</table>
 
 ---
 
-### 📲 Get the App Now
-
-<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank">
-  <img src="https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black" alt="📱 Download APK">
-</a>
-
-> *Direct download from Google Drive • No registration required*
+<!-- App Preview -->
+<div>
+<img width="320" height="320" alt="SpendSight App Preview" src="https://github.com/user-attachments/assets/7f82df65-ad79-4053-b149-5828dfa4904f" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 </div>
 
+<!-- Quick Stats -->
+<table>
+<tr>
+<td align="center">
+<img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square" alt="Version">
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/Size-~25MB-green?style=flat-square" alt="Size">
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/Status-Preview-orange?style=flat-square" alt="Status">
+</td>
+</tr>
+</table>
 
-#### 📋 Installation Instructions:
-1. Download the APK from the link above
-2. Enable "Unknown Sources" in your Android settings
-3. Install the APK file
-4. Open SpendSight and start managing your finances! 💰
+</div>
 
+## 📲 Installation Guide
+
+<details>
+<summary><strong>🔽 Click to expand installation steps</strong></summary>
+
+### **Step 1: Download**
+- Click the download button above
+- File will open in Google Drive
+- Download the `.apk` file to your device
+
+### **Step 2: Enable Installation**
+**For Android 8.0+:**
+- Go to `Settings` → `Apps & notifications` → `Special app access` → `Install unknown apps`
+- Select your browser → Enable `Allow from this source`
+
+**For older Android versions:**
+- Go to `Settings` → `Security` → Enable `Unknown sources`
+
+### **Step 3: Install**
+- Open the downloaded APK file
+- Tap `Install` when prompted
+- Wait for installation to complete
+
+### **Step 4: Launch**
+- Find SpendSight in your app drawer
+- Open and enjoy! 🎉
+
+</details>
+
+---
+
+## ⚡ Quick Access Links
+
+<div align="center">
+<table>
+<tr>
+<td align="center">
+<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
+<img src="https://img.shields.io/badge/📁_Google_Drive-Direct_Link-34A853?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=1a1a1a" alt="Google Drive">
+</a>
+</td>
+<td align="center">
+<a href="#-system-requirements" target="_blank" rel="noopener noreferrer">
+<img src="https://img.shields.io/badge/📋_Requirements-Check_Here-6C757D?style=for-the-badge&logo=checkmk&logoColor=white&labelColor=1a1a1a" alt="Requirements">
+</a>
+</td>
+<td align="center">
+<a href="#-features" target="_blank" rel="noopener noreferrer">
+<img src="https://img.shields.io/badge/✨_Features-Explore-9C27B0?style=for-the-badge&logo=sparkles&logoColor=white&labelColor=1a1a1a" alt="Features">
+</a>
+</td>
+</tr>
+</table>
+</div>
+
+## 🛡️ System Requirements
+
+<div align="center">
+<table>
+<tr>
+<th>Requirement</th>
+<th>Minimum</th>
+<th>Recommended</th>
+</tr>
+<tr>
+<td><strong>Android Version</strong></td>
+<td>6.0 (API 23)</td>
+<td>9.0+ (API 28+)</td>
+</tr>
+<tr>
+<td><strong>Storage Space</strong></td>
+<td>50MB</td>
+<td>100MB</td>
+</tr>
+<tr>
+<td><strong>RAM</strong></td>
+<td>2GB</td>
+<td>4GB+</td>
+</tr>
+<tr>
+<td><strong>Internet</strong></td>
+<td colspan="2">Required for authentication & sync</td>
+</tr>
+</table>
+</div>
+
+## ⚠️ Important Notes
+
+<div align="center">
+
+> **🔒 Security Notice**
+> 
+> This APK is digitally signed and safe to install. Your antivirus may show a warning because it's not from Google Play Store.
+
+> **🚀 Preview Build**
+> 
+> This is a preview version for testing. Features may be limited and some functionality is still in development.
+
+> **📱 Compatibility**
+> 
+> Currently available for **Android only**. iOS version coming soon!
+
+</div>
+
+---
+
+<div align="center">
+
+### 🌟 Ready to Transform Your Financial Life?
+
+<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/🚀_Get_Started_Now-Download_SpendSight-FF6B35?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a1a&shadowColor=000" alt="Get Started Now">
+</a>
+
+*Join the future of personal finance management*
+
+</div>
 
 ## Overview
 
