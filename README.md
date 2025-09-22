@@ -15,7 +15,7 @@
 
 ### 📲 Get the App Now
 
-[![📱 Download APK](https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black)](https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing)
+[![📱 Download APK](https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=black)]([https://drive.google.com/drive/folders/1PbfEcWlcJ5sDmDE1Mwdln0aK4EjE163m?usp=sharing](https://drive.google.com/drive/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W?dmr=1&ec=wgc-drive-globalnav-goto))
 
 > *Direct download from Google Drive • No registration required*
 
