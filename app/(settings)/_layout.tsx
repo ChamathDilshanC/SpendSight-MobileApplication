@@ -1,15 +1,16 @@
 import { Stack } from "expo-router";
-import React from "react";
 
 export default function SettingsLayout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="index"
-        options={{
-          headerShown: false,
-        }}
-      />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
+      }}
+    >
+      <Stack.Screen name="index" /> 
+      <Stack.Screen name="edit-profile" />
     </Stack>
   );
 }
