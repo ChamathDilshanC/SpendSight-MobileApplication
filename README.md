@@ -53,7 +53,7 @@
 <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square" alt="Version">
 </td>
 <td align="center">
-<img src="https://img.shields.io/badge/Size-~25MB-green?style=flat-square" alt="Size">
+<img src="https://img.shields.io/badge/Size-~125MB-green?style=flat-square" alt="Size">
 </td>
 <td align="center">
 <img src="https://img.shields.io/badge/Status-Preview-orange?style=flat-square" alt="Status">
