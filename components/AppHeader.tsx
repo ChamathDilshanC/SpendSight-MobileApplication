@@ -43,7 +43,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
 
-
   const overlayAnimatedStyle = useAnimatedStyle(() => ({
     opacity: overlayAnim.value,
   }));
@@ -91,7 +90,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       easing: Easing.in(Easing.ease),
     });
 
-    // Delay hiding the drawer component to allow animation to complete
+
     setTimeout(() => {
       setIsDrawerVisible(false);
     }, 300);
@@ -101,7 +100,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     if (onBackPress) {
       onBackPress();
     } else {
-      // Default back behavior - go to dashboard
+
       console.log(
         "🔙 AppHeader: No custom back action, navigating to dashboard"
       );
@@ -127,38 +126,42 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         />
 
         <View className="flex-row items-center justify-between px-4">
-          {/* Left Side - Hamburger or Back Button */}
-          <TouchableOpacity
-            className="p-2 -ml-2 rounded-lg active:bg-gray-100"
-            onPress={showBackButton ? handleBackPress : toggleDrawer}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={showBackButton ? "arrow-back" : "menu"}
-              size={24}
-              color={textColor}
-            />
-          </TouchableOpacity>
+          {}
+          <View className="w-10">
+            <TouchableOpacity
+              className="p-2 -ml-2 rounded-lg active:bg-gray-100"
+              onPress={showBackButton ? handleBackPress : toggleDrawer}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={showBackButton ? "arrow-back" : "menu"}
+                size={24}
+                color={textColor}
+              />
+            </TouchableOpacity>
+          </View>
 
-          {/* Center - Title */}
-          <Text
-            className="flex-1 mx-4 text-lg font-semibold text-center"
-            style={{ color: textColor }}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {title}
-          </Text>
+          {}
+          <View className="flex-1 mx-4">
+            <Text
+              className="text-lg font-semibold text-center"
+              style={{ color: textColor }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {title}
+            </Text>
+          </View>
 
-          {/* Right Side - Optional Component */}
-          <View className="items-center w-10">
-            {rightComponent || <View />}
+          {}
+          <View className="items-end justify-center w-10">
+            {rightComponent}
           </View>
         </View>
       </View>
 
-      {/* Navigation Drawer */}
+      {}
       {isDrawerVisible && (
         <NavigationDrawer
           isVisible={isDrawerVisible}
