@@ -1,3 +1,4 @@
+import { getAuth } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import {
   deleteObject,
@@ -17,9 +18,6 @@ export interface ProfileImageUploadResult {
 export class UserProfileService {
   private static storage = getStorage();
 
-  /**
-   * Upload profile image to Firebase Storage and update user document
-   */
   static async uploadProfileImage(
     userId: string,
     imageUri: string
@@ -28,7 +26,19 @@ export class UserProfileService {
       console.log("📸 Starting profile image upload for user:", userId);
       console.log("📷 Image URI:", imageUri);
 
-      // Create a unique filename with timestamp
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error("User not authenticated. Please log in and try again.");
+      }
+
+      if (currentUser.uid !== userId) {
+        throw new Error(
+          "Authentication mismatch. Please log out and log back in."
+        );
+      }
+
       const timestamp = Date.now();
       const filename = `profile_${userId}_${timestamp}.jpg`;
       const storageRef = ref(this.storage, `profile-images/${filename}`);
@@ -38,9 +48,9 @@ export class UserProfileService {
         `profile-images/${filename}`
       );
 
-      // Convert image URI to blob with better error handling
       let response;
       try {
+        console.log("🔄 Fetching image from URI...");
         response = await fetch(imageUri);
         if (!response.ok) {
           throw new Error(
@@ -56,52 +66,85 @@ export class UserProfileService {
 
       const blob = await response.blob();
       console.log("📦 Image blob created, size:", blob.size, "bytes");
+      console.log("📦 Image blob type:", blob.type);
 
-      // Check blob size (limit to 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024;
       if (blob.size > maxSize) {
         throw new Error(
           "Image is too large. Please select an image smaller than 5MB."
         );
       }
 
+      if (!blob.type.startsWith("image/")) {
+        throw new Error("Selected file is not a valid image.");
+      }
+
       console.log("📤 Uploading image to Firebase Storage...");
 
-      // Upload the image with metadata
       const metadata = {
-        contentType: "image/jpeg",
+        contentType: blob.type || "image/jpeg",
         customMetadata: {
           userId: userId,
           uploadedAt: new Date().toISOString(),
+          originalName: `profile_${userId}_${timestamp}`,
         },
       };
 
-      const uploadResult = await uploadBytes(storageRef, blob, metadata);
-      console.log("✅ Image uploaded to Firebase Storage");
+      let uploadResult;
+      try {
+        uploadResult = await uploadBytes(storageRef, blob, metadata);
+        console.log("✅ Image uploaded to Firebase Storage successfully");
+      } catch (storageError: any) {
+        console.error("❌ Firebase Storage upload error:", storageError);
 
-      // Get the download URL
-      const downloadURL = await getDownloadURL(uploadResult.ref);
-      console.log("✅ Download URL obtained:", downloadURL);
+        if (storageError.code === "storage/unauthorized") {
+          throw new Error(
+            "Upload permission denied. Please check your account permissions."
+          );
+        } else if (storageError.code === "storage/quota-exceeded") {
+          throw new Error("Storage quota exceeded. Please contact support.");
+        } else if (storageError.code === "storage/unauthenticated") {
+          throw new Error(
+            "Authentication required. Please log in and try again."
+          );
+        } else {
+          throw new Error(
+            `Upload failed: ${storageError.message || "Unknown storage error"}`
+          );
+        }
+      }
 
-      // Update the user document with the new profile image URL
-      await this.updateUserProfileImage(userId, downloadURL);
+      let downloadURL;
+      try {
+        downloadURL = await getDownloadURL(uploadResult.ref);
+        console.log("✅ Download URL obtained:", downloadURL);
+      } catch (urlError) {
+        console.error("❌ Failed to get download URL:", urlError);
+        throw new Error(
+          "Upload completed but failed to get image URL. Please try again."
+        );
+      }
+
+      try {
+        await this.updateUserProfileImage(userId, downloadURL);
+      } catch (updateError) {
+        console.error("❌ Failed to update user profile:", updateError);
+        console.log("⚠️ Image uploaded but profile update failed");
+      }
 
       return {
         success: true,
         imageUrl: downloadURL,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Profile image upload failed:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Upload failed",
+        error: error.message || "Upload failed with unknown error",
       };
     }
   }
 
-  /**
-   * Update user document with new profile image URL
-   */
   static async updateUserProfileImage(
     userId: string,
     imageUrl: string
@@ -110,7 +153,7 @@ export class UserProfileService {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         profileImage: imageUrl,
-        profilePicture: imageUrl, // Keep for backward compatibility
+        profilePicture: imageUrl,
         updatedAt: new Date(),
       });
       console.log("✅ User profile image updated in Firestore");
@@ -120,9 +163,6 @@ export class UserProfileService {
     }
   }
 
-  /**
-   * Get user profile image URL
-   */
   static async getUserProfileImage(userId: string): Promise<string | null> {
     try {
       const userRef = doc(db, "users", userId);
@@ -140,14 +180,10 @@ export class UserProfileService {
     }
   }
 
-  /**
-   * Delete old profile image from storage
-   */
   static async deleteProfileImage(imageUrl: string): Promise<void> {
     try {
-      // Extract filename from URL to create storage reference
       const urlParts = imageUrl.split("/");
-      const filename = urlParts[urlParts.length - 1].split("?")[0]; // Remove query params
+      const filename = urlParts[urlParts.length - 1].split("?")[0];
 
       const storageRef = ref(this.storage, `profile-images/${filename}`);
       await deleteObject(storageRef);
@@ -155,20 +191,14 @@ export class UserProfileService {
       console.log("🗑️ Old profile image deleted from storage");
     } catch (error) {
       console.error("❌ Failed to delete old profile image:", error);
-      // Don't throw error here as it shouldn't block the upload process
     }
   }
 
-  /**
-   * Validate image file
-   */
   static validateImage(imageUri: string): { valid: boolean; error?: string } {
-    // Check if URI exists
     if (!imageUri || imageUri.trim() === "") {
       return { valid: false, error: "No image selected" };
     }
 
-    // Check file extension (basic validation)
     const validExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     const hasValidExtension = validExtensions.some((ext) =>
       imageUri.toLowerCase().includes(ext)
@@ -184,9 +214,6 @@ export class UserProfileService {
     return { valid: true };
   }
 
-  /**
-   * Generate default avatar with user's initials
-   */
   static getDefaultAvatar(fullName?: string): string {
     if (!fullName) return "U";
 
@@ -196,5 +223,96 @@ export class UserProfileService {
     }
 
     return fullName.charAt(0).toUpperCase();
+  }
+
+  static async updateUserProfile(
+    userId: string,
+    userData: {
+      fullName?: string;
+      email?: string;
+      profileImage?: string;
+    }
+  ): Promise<void> {
+    try {
+      console.log("🔄 Updating user profile for:", userId);
+      console.log("📝 Update data:", userData);
+
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error("User not authenticated. Please log in and try again.");
+      }
+
+      if (currentUser.uid !== userId) {
+        throw new Error(
+          "Authentication mismatch. Please log out and log back in."
+        );
+      }
+
+      const userRef = doc(db, "users", userId);
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      // Only add fields that have valid values (not undefined)
+      if (userData.fullName !== undefined && userData.fullName !== null) {
+        updateData.fullName = userData.fullName.trim();
+      }
+
+      if (userData.email !== undefined && userData.email !== null) {
+        updateData.email = userData.email.trim().toLowerCase();
+      }
+
+      if (
+        userData.profileImage !== undefined &&
+        userData.profileImage !== null
+      ) {
+        if (userData.profileImage === "") {
+          // If empty string, set to null instead of undefined
+          updateData.profileImage = null;
+          updateData.profilePicture = null;
+        } else {
+          updateData.profileImage = userData.profileImage;
+          updateData.profilePicture = userData.profileImage; // For backward compatibility
+        }
+      }
+
+      console.log("📤 Final update data:", updateData);
+
+      await updateDoc(userRef, updateData);
+
+      console.log("✅ User profile updated successfully in Firestore");
+    } catch (error: any) {
+      console.error("❌ Error updating user profile:", error);
+
+      if (error.code === "permission-denied") {
+        throw new Error("You don't have permission to update this profile.");
+      } else if (error.code === "not-found") {
+        throw new Error("User profile not found. Please contact support.");
+      } else if (error.code === "unavailable") {
+        throw new Error("Service temporarily unavailable. Please try again.");
+      } else {
+        throw new Error(
+          error.message || "Failed to update profile. Please try again."
+        );
+      }
+    }
+  }
+
+  static async getUserProfile(userId: string): Promise<any> {
+    try {
+      const userRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userRef);
+
+      if (userDoc.exists()) {
+        return userDoc.data();
+      }
+
+      return null;
+    } catch (error) {
+      console.error("❌ Failed to get user profile:", error);
+      throw new Error("Failed to load user profile. Please try again.");
+    }
   }
 }
