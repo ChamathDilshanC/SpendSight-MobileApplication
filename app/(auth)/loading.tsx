@@ -94,7 +94,6 @@ export default function LoadingScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
       <SafeAreaView className="flex-1 bg-[#ffffff]">
         <View className="items-center justify-center flex-1 px-6">
-          {}
           <MotiView
             from={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -105,7 +104,6 @@ export default function LoadingScreen() {
             }}
             className="items-center"
           >
-            {}
             <View className="mb-8">
               <LottieView
                 source={require("../../assets/animations/loading-animation.json")}
@@ -124,7 +122,6 @@ export default function LoadingScreen() {
               />
             </View>
 
-            {}
             <MotiView
               key={loadingStep}
               from={{ opacity: 0, translateY: 20 }}
@@ -155,28 +152,30 @@ export default function LoadingScreen() {
               }}
               className="mt-12"
             >
-              <View className="flex-row space-x-2">
+              <View className="flex-row items-center justify-center">
                 {[0, 1, 2, 3].map((index) => (
-                  <MotiView
-                    key={index}
-                    animate={{
-                      scale: index <= loadingStep ? 1.2 : 1,
-                      backgroundColor:
-                        index <= loadingStep ? "#0077CC" : "#374151",
-                    }}
-                    transition={{
-                      type: "spring",
-                      damping: 15,
-                      stiffness: 250,
-                    }}
-                    className="w-3 h-3 rounded-full"
-                  />
+                  <React.Fragment key={index}>
+                    <MotiView
+                      animate={{
+                        scale: index <= loadingStep ? 1.1 : 1,
+                        backgroundColor:
+                          index <= loadingStep ? "#0077CC" : "#374151",
+                      }}
+                      transition={{
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 250,
+                      }}
+                      className="w-3 h-3 rounded-full"
+                    />
+                    {}
+                    {index < 3 && <View className="w-3" />}
+                  </React.Fragment>
                 ))}
               </View>
             </MotiView>
           </MotiView>
 
-          {}
           <MotiView
             from={{ opacity: 0 }}
             animate={{ opacity: 1 }}
