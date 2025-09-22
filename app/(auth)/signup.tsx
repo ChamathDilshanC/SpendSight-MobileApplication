@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -22,7 +22,7 @@ import {
 } from "../../services/authService";
 import { NavigationManager } from "../../utils/navigationManager";
 
-// Google Logo Component
+
 const GoogleLogo = ({ size = 20 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
@@ -44,7 +44,7 @@ const GoogleLogo = ({ size = 20 }) => (
   </Svg>
 );
 
-// Apple Logo Component
+
 const AppleLogo = ({ size = 20, color = "#000" }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -62,10 +62,53 @@ export default function SignupScreen() {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
+
+
+  useEffect(() => {
+    if (!authState.isLoading) {
+      setIsLoading(false);
+      setIsSocialLoading(false);
+    }
+  }, [authState.isLoading]);
+
+
+  useEffect(() => {
+    if (authState.error) {
+      setIsLoading(false);
+      setIsSocialLoading(false);
+    }
+  }, [authState.error]);
+
+
+  useEffect(() => {
+    if (!authState.isLoading && authState.isAuthenticated && authState.user) {
+      NavigationManager.navigateToDashboard();
+    }
+  }, [authState.isLoading, authState.isAuthenticated, authState.user]);
+
+  const showErrorAlert = (title: string, message: string) => {
+    Alert.alert(title, message, [
+      {
+        text: "OK",
+        onPress: () => {
+          clearError();
+          setIsLoading(false);
+          setIsSocialLoading(false);
+        },
+      },
+    ]);
+  };
 
   const handleSignup = async () => {
+    if (isLoading || isSocialLoading || authState.isLoading) {
+      return;
+    }
+
     try {
       setIsLoading(true);
+      clearError();
+
       console.log("🚀 Starting signup process...");
       console.log("📝 Form data:", {
         fullName: formData.fullName,
@@ -73,36 +116,40 @@ export default function SignupScreen() {
         passwordLength: formData.password.length,
       });
 
-      // Validation
+
       if (!validateFullName(formData.fullName)) {
+        setIsLoading(false);
         Alert.alert(
-          "Validation Error",
+          "Invalid Name",
           "Full name must be at least 2 characters long"
         );
         return;
       }
 
       if (!validateEmail(formData.email)) {
-        Alert.alert("Validation Error", "Please enter a valid email address");
+        setIsLoading(false);
+        Alert.alert("Invalid Email", "Please enter a valid email address");
         return;
       }
 
       if (!validatePassword(formData.password)) {
+        setIsLoading(false);
         Alert.alert(
-          "Validation Error",
+          "Weak Password",
           "Password must be at least 6 characters long"
         );
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        Alert.alert("Validation Error", "Passwords do not match");
+        setIsLoading(false);
+        Alert.alert("Password Mismatch", "Passwords do not match");
         return;
       }
 
       console.log("✅ Validation passed, calling AuthService.register...");
 
-      // Use the service
+
       const result = await AuthService.register(
         formData.fullName,
         formData.email,
@@ -116,6 +163,7 @@ export default function SignupScreen() {
 
       if (result.success) {
         console.log("🎉 Registration successful!");
+        setIsLoading(false);
         Alert.alert(
           "Account Created!",
           "Your account has been created successfully. Please sign in to continue.",
@@ -130,45 +178,118 @@ export default function SignupScreen() {
           ]
         );
       } else {
+        setIsLoading(false);
         console.log("❌ Registration failed:", result.error);
-        Alert.alert(
-          "Registration Failed",
-          result.error || "Unknown error occurred"
-        );
+
+
+        const errorMessage = result.error || "Registration failed";
+
+        if (errorMessage.includes("auth/email-already-in-use")) {
+          showErrorAlert(
+            "Email Already Exists",
+            "An account with this email address already exists. Please use a different email or sign in instead."
+          );
+        } else if (errorMessage.includes("auth/weak-password")) {
+          showErrorAlert(
+            "Weak Password",
+            "Your password is too weak. Please choose a stronger password with at least 6 characters."
+          );
+        } else if (errorMessage.includes("auth/invalid-email")) {
+          showErrorAlert(
+            "Invalid Email",
+            "The email address you entered is not valid. Please check and try again."
+          );
+        } else if (errorMessage.includes("auth/operation-not-allowed")) {
+          showErrorAlert(
+            "Registration Disabled",
+            "Email/password registration is currently disabled. Please contact support."
+          );
+        } else if (errorMessage.includes("auth/too-many-requests")) {
+          showErrorAlert(
+            "Too Many Attempts",
+            "Too many registration attempts. Please try again later."
+          );
+        } else {
+          showErrorAlert("Registration Failed", errorMessage);
+        }
       }
     } catch (error) {
       console.error("💥 Unexpected error during signup:", error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
-    } finally {
       setIsLoading(false);
+      showErrorAlert(
+        "Registration Failed",
+        "An unexpected error occurred. Please try again."
+      );
     }
   };
 
   const handleGoogleSignUp = async () => {
-    const success = await signInWithGoogle();
-    if (success) {
-      NavigationManager.navigateToDashboard();
-    } else if (authState.error) {
-      Alert.alert("Google Sign-In Failed", authState.error, [
-        { text: "OK", onPress: clearError },
-      ]);
+    if (isLoading || isSocialLoading || authState.isLoading) {
+      return;
+    }
+
+    try {
+      setIsSocialLoading(true);
+      clearError();
+
+      console.log("🔐 Attempting Google sign-up...");
+
+      const success = await signInWithGoogle();
+
+      if (success) {
+        NavigationManager.navigateToDashboard();
+      } else {
+        setIsSocialLoading(false);
+        const errorMessage =
+          authState.error || "Google sign-up failed. Please try again.";
+        showErrorAlert("Google Sign-Up Failed", errorMessage);
+      }
+    } catch (error) {
+      console.error("❌ Google sign-up error:", error);
+      setIsSocialLoading(false);
+      showErrorAlert(
+        "Google Sign-Up Failed",
+        "An unexpected error occurred. Please try again."
+      );
     }
   };
 
   const handleAppleSignUp = async () => {
-    const success = await signInWithApple();
-    if (success) {
-      NavigationManager.navigateToDashboard();
-    } else if (authState.error) {
-      Alert.alert("Apple Sign-In Failed", authState.error, [
-        { text: "OK", onPress: clearError },
-      ]);
+    if (isLoading || isSocialLoading || authState.isLoading) {
+      return;
+    }
+
+    try {
+      setIsSocialLoading(true);
+      clearError();
+
+      console.log("🔐 Attempting Apple sign-up...");
+
+      const success = await signInWithApple();
+
+      if (success) {
+        NavigationManager.navigateToDashboard();
+      } else {
+        setIsSocialLoading(false);
+        const errorMessage =
+          authState.error || "Apple sign-up failed. Please try again.";
+        showErrorAlert("Apple Sign-Up Failed", errorMessage);
+      }
+    } catch (error) {
+      console.error("❌ Apple sign-up error:", error);
+      setIsSocialLoading(false);
+      showErrorAlert(
+        "Apple Sign-Up Failed",
+        "An unexpected error occurred. Please try again."
+      );
     }
   };
 
   const goToLogin = () => {
     NavigationManager.navigateToLogin();
   };
+
+  const isAnyLoading = isLoading || isSocialLoading || authState.isLoading;
 
   return (
     <>
@@ -225,6 +346,7 @@ export default function SignupScreen() {
                   autoComplete="name"
                   textContentType="name"
                   autoCorrect={false}
+                  editable={!isAnyLoading}
                 />
               </View>
 
@@ -245,6 +367,7 @@ export default function SignupScreen() {
                   autoComplete="email"
                   textContentType="emailAddress"
                   autoCorrect={false}
+                  editable={!isAnyLoading}
                 />
               </View>
 
@@ -264,6 +387,7 @@ export default function SignupScreen() {
                   autoComplete="new-password"
                   textContentType="newPassword"
                   autoCorrect={false}
+                  editable={!isAnyLoading}
                 />
               </View>
 
@@ -283,28 +407,25 @@ export default function SignupScreen() {
                   autoComplete="new-password"
                   textContentType="newPassword"
                   autoCorrect={false}
+                  editable={!isAnyLoading}
                 />
               </View>
 
-              {/* Create Account Button */}
+              {}
               <TouchableOpacity
                 className={`py-4 rounded-xl mb-6 ${
-                  isLoading || authState.isLoading
-                    ? "bg-blue-400"
-                    : "bg-[#0077CC]"
+                  isAnyLoading ? "bg-blue-400" : "bg-[#0077CC]"
                 }`}
                 onPress={handleSignup}
-                disabled={isLoading || authState.isLoading}
+                disabled={isAnyLoading}
                 activeOpacity={0.8}
               >
                 <Text className="text-lg font-bold text-center text-white">
-                  {isLoading || authState.isLoading
-                    ? "Creating Account..."
-                    : "Create Account"}
+                  {isLoading ? "Creating Account..." : "Create Account"}
                 </Text>
               </TouchableOpacity>
 
-              {/* Social Sign-In Options */}
+              {}
               <View className="mb-6">
                 <View className="flex-row items-center mb-6">
                   <View className="flex-1 h-px bg-gray-600" />
@@ -315,44 +436,62 @@ export default function SignupScreen() {
                 </View>
 
                 <View className="space-y-3">
-                  {/* Google Sign-Up Button */}
+                  {}
                   <TouchableOpacity
-                    className="flex-row items-center justify-center px-4 py-4 mb-3 bg-white shadow-md rounded-xl active:bg-gray-100"
+                    className={`flex-row items-center justify-center px-4 py-4 mb-3 shadow-md rounded-xl ${
+                      isAnyLoading
+                        ? "bg-gray-200"
+                        : "bg-white active:bg-gray-100"
+                    }`}
                     onPress={handleGoogleSignUp}
-                    disabled={authState.isLoading}
+                    disabled={isAnyLoading}
                   >
                     <View className="mr-3">
                       <GoogleLogo size={20} />
                     </View>
                     <Text className="text-base font-medium text-gray-700">
-                      Sign up with Google
+                      {isSocialLoading
+                        ? "Signing up..."
+                        : "Sign up with Google"}
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Apple Sign-Up Button (iOS only) */}
+                  {}
                   {Platform.OS === "ios" && (
                     <TouchableOpacity
-                      className="flex-row items-center justify-center px-4 py-4 bg-black border border-gray-700 shadow-md rounded-xl active:bg-gray-900"
+                      className={`flex-row items-center justify-center px-4 py-4 border border-gray-700 shadow-md rounded-xl ${
+                        isAnyLoading
+                          ? "bg-gray-800"
+                          : "bg-black active:bg-gray-900"
+                      }`}
                       onPress={handleAppleSignUp}
-                      disabled={authState.isLoading}
+                      disabled={isAnyLoading}
                     >
                       <View className="mr-3">
                         <AppleLogo size={20} color="#FFFFFF" />
                       </View>
                       <Text className="text-base font-medium text-white">
-                        Sign up with Apple
+                        {isSocialLoading
+                          ? "Signing up..."
+                          : "Sign up with Apple"}
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
-              {/* Login Link */}
+              {}
               <View className="items-center">
-                <TouchableOpacity onPress={goToLogin} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={goToLogin}
+                  activeOpacity={0.7}
+                  disabled={isAnyLoading}
+                >
                   <Text className="text-gray-400">
                     Already have an account?{" "}
-                    <Text className="text-[#0077CC] font-semibold">
+                    <Text
+                      className={`font-semibold ${isAnyLoading ? "text-gray-500" : "text-[#0077CC]"}`}
+                    >
                       Sign In
                     </Text>
                   </Text>
