@@ -100,7 +100,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     if (onBackPress) {
       onBackPress();
     } else {
-
       console.log(
         "🔙 AppHeader: No custom back action, navigating to dashboard"
       );
@@ -162,14 +161,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       </View>
 
       {}
-      {isDrawerVisible && (
-        <NavigationDrawer
-          isVisible={isDrawerVisible}
-          onClose={closeDrawer}
-          overlayAnimatedStyle={overlayAnimatedStyle}
-          drawerAnimatedStyle={drawerAnimatedStyle}
-        />
-      )}
+      <NavigationDrawer
+        isVisible={isDrawerVisible}
+        onClose={closeDrawer}
+        overlayAnimatedStyle={overlayAnimatedStyle}
+        drawerAnimatedStyle={drawerAnimatedStyle}
+      />
     </>
   );
 };
