@@ -10,8 +10,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import "../global.css";
 import { useAuth } from "../context/FirebaseAuthContext";
+import "../global.css";
 import { NavigationManager } from "../utils/navigationManager";
 
 const LOGO = require("../assets/images/SpendSightLogo.png");
@@ -53,55 +53,69 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!authState.isLoading && isConnected && imagesLoaded) {
-      const timer = setTimeout(() => {
-        setIsNavigating(true);
-
-        setTimeout(() => {
-          if (authState.isAuthenticated && authState.user) {
-            console.log("✅ User authenticated, navigating to dashboard");
-            NavigationManager.navigateToDashboard();
-          } else {
-            console.log("❌ User not authenticated, showing getting started");
-            NavigationManager.navigateToGetStarted();
-          }
-        }, 300);
-      }, 2500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [
-    authState.isLoading,
-    authState.isAuthenticated,
-    isConnected,
-    imagesLoaded,
-  ]);
-
-  const handleGetStarted = () => {
-    if (isConnected && imagesLoaded && !authState.isLoading) {
+    if (
+      authState.isInitialized &&
+      isConnected !== null &&
+      imagesLoaded &&
+      !isNavigating
+    ) {
       setIsNavigating(true);
+      console.log("🚀 Auth system initialized. Deciding navigation...");
 
       setTimeout(() => {
         if (authState.isAuthenticated && authState.user) {
+          console.log("✅ User authenticated → Navigating to Dashboard");
           NavigationManager.navigateToDashboard();
         } else {
+          console.log("❌ No authenticated user → Showing Get Started");
           NavigationManager.navigateToGetStarted();
         }
       }, 300);
-    } else {
+    }
+  }, [
+    authState.isInitialized,
+    authState.isAuthenticated,
+    authState.user,
+    isConnected,
+    imagesLoaded,
+    isNavigating,
+  ]);
+
+  const handleGetStarted = () => {
+    if (!authState.isInitialized) {
+      Alert.alert("Please Wait", "Checking authentication, please wait...", [
+        { text: "OK", style: "default" },
+      ]);
+      return;
+    }
+
+    if (!isConnected) {
       Alert.alert(
-        "Please Wait",
-        !isConnected
-          ? "Please check your internet connection and try again."
-          : authState.isLoading
-            ? "Checking authentication, please wait..."
-            : "Loading assets, please wait...",
+        "No Connection",
+        "Please check your internet connection and try again.",
         [{ text: "OK", style: "default" }]
       );
+      return;
     }
+
+    if (!imagesLoaded) {
+      Alert.alert("Loading...", "Please wait while we load assets.", [
+        { text: "OK", style: "default" },
+      ]);
+      return;
+    }
+
+    setIsNavigating(true);
+    setTimeout(() => {
+      if (authState.isAuthenticated && authState.user) {
+        NavigationManager.navigateToDashboard();
+      } else {
+        NavigationManager.navigateToGetStarted();
+      }
+    }, 300);
   };
 
-  const isReady = !authState.isLoading && isConnected && imagesLoaded;
+  const isReady = authState.isInitialized && isConnected && imagesLoaded;
 
   return (
     <SafeAreaView
@@ -168,7 +182,7 @@ export default function App() {
                 }}
                 className="items-center"
               >
-                {/* Connection Status - No Box Styling */}
+                {}
                 <View className="flex-row items-center justify-center mb-4">
                   <MotiView
                     animate={{
@@ -196,7 +210,7 @@ export default function App() {
                       !isReady ? "text-gray-400" : "text-green-400"
                     }`}
                   >
-                    {authState.isLoading
+                    {!authState.isInitialized
                       ? "Checking authentication..."
                       : isConnected === null
                         ? "Checking connection..."
@@ -208,7 +222,7 @@ export default function App() {
                   </Text>
                 </View>
 
-                {/* Action Text - No Box Styling */}
+                {}
                 {isReady && (
                   <MotiView
                     from={{ opacity: 0 }}
@@ -228,7 +242,7 @@ export default function App() {
                   </MotiView>
                 )}
 
-                {/* Error Message - No Box Styling */}
+                {}
                 {!isConnected && isConnected !== null && (
                   <MotiView
                     from={{ opacity: 0 }}
@@ -247,7 +261,7 @@ export default function App() {
             </MotiView>
           </MotiView>
 
-          {/* Footer - No Box Styling */}
+          {}
           <View className="absolute items-center bottom-20">
             <Text className="text-xs font-medium text-center text-gray-500">
               SpendSight v1.0
@@ -257,6 +271,7 @@ export default function App() {
             </Text>
           </View>
 
+          {}
           <Image
             source={GET_STARTED_BG}
             className="absolute w-0 h-0 opacity-0"
