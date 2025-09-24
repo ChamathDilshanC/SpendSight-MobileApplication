@@ -3,7 +3,7 @@ export interface User {
   fullName: string;
   email: string;
   profileImage?: string;
-  profilePicture?: string; // Keep for backward compatibility
+  profilePicture?: string;
   dateJoined: Date;
   isActive: boolean;
   authProvider?: "email" | "google" | "apple";
@@ -42,6 +42,7 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
   error: string | null;
 }
 
