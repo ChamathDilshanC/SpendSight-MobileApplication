@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Alert,
   Dimensions,
@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/FirebaseAuthContext";
 import { UserProfileService } from "../services/UserProfileService";
 import { NavigationManager } from "../utils/navigationManager";
-import { ProfileImagePicker } from "./ProfileImagePicker";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -87,34 +86,58 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   const { authState, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const hasLoadedImageRef = useRef<string | null>(null);
 
 
   useEffect(() => {
     const loadProfileImage = async () => {
-      if (authState?.user?.id) {
-        try {
-
-          const existingImage =
-            authState.user.profileImage || authState.user.profilePicture;
-          if (existingImage) {
-            setProfileImage(existingImage);
-            return;
-          }
+      const userId = authState?.user?.id;
 
 
-          const imageUrl = await UserProfileService.getUserProfileImage(
-            authState.user.id
-          );
-          setProfileImage(imageUrl);
-        } catch (error) {
-          console.error("Failed to load profile image:", error);
+      if (!userId || hasLoadedImageRef.current === userId) {
+        return;
+      }
+
+      try {
+
+        const existingImage =
+          authState.user?.profileImage || authState.user?.profilePicture;
+
+        if (existingImage) {
+          setProfileImage(existingImage);
+          hasLoadedImageRef.current = userId;
+          return;
         }
+
+
+        const imageUrl = await UserProfileService.getUserProfileImage(userId);
+        setProfileImage(imageUrl);
+        hasLoadedImageRef.current = userId;
+      } catch (error) {
+        console.error("Failed to load profile image:", error);
+        hasLoadedImageRef.current = userId;
       }
     };
 
-    loadProfileImage();
-  }, [authState?.user?.id, authState?.user?.profileImage]);
 
+    if (authState?.user?.id) {
+      loadProfileImage();
+    }
+  }, [authState?.user?.id]);
+
+
+  useEffect(() => {
+    const currentUserId = authState?.user?.id;
+
+
+    if (
+      hasLoadedImageRef.current &&
+      hasLoadedImageRef.current !== currentUserId
+    ) {
+      setProfileImage(null);
+      hasLoadedImageRef.current = null;
+    }
+  }, [authState?.user?.id]);
 
   if (!authState || !authState.user) {
     return null;
@@ -126,20 +149,8 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     NavigationManager.navigateToAuth();
   };
 
-  const handleProfileImageUpload = (imageUrl: string) => {
-    setProfileImage(imageUrl);
-
-
-  };
-
-  const handleProfileImageError = (error: string) => {
-    console.error("Profile image upload error:", error);
-    Alert.alert("Upload Error", error);
-  };
-
   const navigateToScreen = (screen: string) => {
     onClose();
-
 
     setTimeout(() => {
       switch (screen) {
@@ -183,10 +194,6 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     }, 350);
   };
 
-  if (!isVisible) {
-    return null;
-  }
-
 
   if (!overlayAnimatedStyle || !drawerAnimatedStyle) {
     console.error("Animated styles are missing!", {
@@ -200,16 +207,18 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     return (
       <>
         {}
-        <Animated.View
-          className="absolute inset-0 bg-black/50 z-[998]"
-          style={overlayAnimatedStyle}
-        >
-          <TouchableOpacity
-            className="flex-1"
-            onPress={onClose}
-            activeOpacity={1}
-          />
-        </Animated.View>
+        {isVisible && (
+          <Animated.View
+            className="absolute inset-0 bg-black/50 z-[998]"
+            style={overlayAnimatedStyle}
+          >
+            <TouchableOpacity
+              className="flex-1"
+              onPress={onClose}
+              activeOpacity={1}
+            />
+          </Animated.View>
+        )}
 
         {}
         <Animated.View
@@ -218,20 +227,18 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             drawerAnimatedStyle,
             {
               width: DRAWER_WIDTH,
-
               borderTopRightRadius: 24,
               borderBottomRightRadius: 24,
-
               shadowColor: "#000",
               shadowOffset: { width: 8, height: 0 },
               shadowOpacity: 0.15,
               shadowRadius: 20,
               elevation: 16,
-
               borderRightWidth: 1,
               borderRightColor: "rgba(0,0,0,0.08)",
             },
           ]}
+          pointerEvents={isVisible ? "auto" : "none"}
         >
           <StatusBar
             barStyle="light-content"
@@ -248,49 +255,31 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             }}
           >
             <View className="flex-row items-center">
-              <ProfileImagePicker
-                userId={authState.user.id}
-                onImageUploaded={handleProfileImageUpload}
-                onError={handleProfileImageError}
+              <View
+                className="items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm"
+                style={{
+                  backgroundColor: profileImage ? "transparent" : "#10B981",
+                  shadowColor: "#10B981",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 4,
+                }}
               >
-                <View
-                  className="relative items-center justify-center w-16 h-16 mr-4 rounded-full shadow-sm"
-                  style={{
-                    backgroundColor: profileImage ? "transparent" : "#10B981",
-                    shadowColor: "#10B981",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 4,
-                    elevation: 4,
-                  }}
-                >
-                  {profileImage ? (
-                    <>
-                      <Image
-                        source={{ uri: profileImage }}
-                        className="w-16 h-16 rounded-full"
-                        style={{ resizeMode: "cover" }}
-                      />
-                      {}
-                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
-                        <Ionicons name="camera" size={12} color="white" />
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text className="text-2xl font-bold text-white">
-                        {UserProfileService.getDefaultAvatar(
-                          authState?.user?.fullName
-                        )}
-                      </Text>
-                      {}
-                      <View className="absolute bottom-0 right-0 items-center justify-center w-5 h-5 bg-blue-500 border-2 border-white rounded-full">
-                        <Ionicons name="add" size={12} color="white" />
-                      </View>
-                    </>
-                  )}
-                </View>
-              </ProfileImagePicker>
+                {profileImage ? (
+                  <Image
+                    source={{ uri: profileImage }}
+                    className="w-16 h-16 rounded-full"
+                    style={{ resizeMode: "cover" }}
+                  />
+                ) : (
+                  <Text className="text-2xl font-bold text-white">
+                    {UserProfileService.getDefaultAvatar(
+                      authState?.user?.fullName
+                    )}
+                  </Text>
+                )}
+              </View>
 
               <View className="flex-1">
                 <Text className="mb-1 text-lg font-semibold text-gray-800">
@@ -384,7 +373,6 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
               onPress={handleLogout}
               activeOpacity={0.6}
             >
-              {}
               <View className="items-center justify-center w-8 h-8 mr-4">
                 <Ionicons name="log-out-outline" size={22} color="#EF4444" />
               </View>
