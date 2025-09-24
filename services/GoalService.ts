@@ -11,12 +11,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { Goal } from "../types/finance";
+import { GoalNotificationService } from "./GoalNotificationService";
+import { NotificationService } from "./NotificationService";
 import { TransactionService } from "./TransactionService";
 
 export class GoalService {
-  /**
-   * Create a new financial goal
-   */
   static async createGoal(
     userId: string,
     goalData: Omit<Goal, "id" | "userId" | "createdAt" | "updatedAt">
@@ -30,6 +29,17 @@ export class GoalService {
       });
 
       console.log("✅ Goal created with ID:", docRef.id);
+
+      const newGoal: Goal = {
+        ...goalData,
+        id: docRef.id,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await GoalNotificationService.notifyGoalCreated(newGoal);
+
       return docRef.id;
     } catch (error) {
       console.error("❌ Error creating goal:", error);
@@ -37,20 +47,15 @@ export class GoalService {
     }
   }
 
-  /**
-   * Get all goals for a user
-   */
   static async getUserGoals(userId: string): Promise<Goal[]> {
     try {
       console.log("🔍 Fetching goals for user:", userId);
 
-      // Simplified query to avoid composite index requirement
       const q = query(collection(db, "goals"), where("userId", "==", userId));
 
       const querySnapshot = await getDocs(q);
       console.log("✅ Found", querySnapshot.docs.length, "goals");
 
-      // Sort in memory to avoid index requirement
       const goals = querySnapshot.docs
         .map(
           (doc) =>
@@ -63,7 +68,6 @@ export class GoalService {
             }) as Goal
         )
         .sort((a, b) => {
-          // Sort by completion status first (incomplete first), then by target date
           if (a.isCompleted && !b.isCompleted) return 1;
           if (!a.isCompleted && b.isCompleted) return -1;
           return a.targetDate.getTime() - b.targetDate.getTime();
@@ -82,9 +86,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Update goal details
-   */
   static async updateGoal(
     goalId: string,
     updateData: Partial<Omit<Goal, "id" | "userId" | "createdAt">>
@@ -96,6 +97,21 @@ export class GoalService {
         updatedAt: serverTimestamp(),
       });
 
+      if (updateData.targetAmount || updateData.targetDate || updateData.name) {
+        await NotificationService.sendNotification(
+          "📝 Goal Updated",
+          `Your goal has been updated${updateData.name ? ": " + updateData.name : ""}`,
+          {
+            type: "goal_update",
+            goalId,
+            goalName: updateData.name || "Unknown Goal",
+            targetAmount: updateData.targetAmount || 0,
+            currentAmount: 0,
+            progress: 0,
+          }
+        );
+      }
+
       console.log("✅ Goal updated:", goalId);
     } catch (error) {
       console.error("❌ Error updating goal:", error);
@@ -103,9 +119,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Make a manual payment towards a goal (deposit)
-   */
   static async payTowardGoal(
     userId: string,
     goalId: string,
@@ -114,26 +127,55 @@ export class GoalService {
     description: string = "Goal payment"
   ): Promise<string> {
     try {
-      // Create a transaction for the goal payment
+      const goals = await this.getUserGoals(userId);
+      const goalBefore = goals.find((g) => g.id === goalId);
+
+      if (!goalBefore) {
+        throw new Error("Goal not found");
+      }
+
       const transactionId = await TransactionService.createTransaction(userId, {
         type: "goal_payment",
         amount,
         currency: "USD",
         description,
         fromAccountId,
-        // categoryId omitted for goal transactions
+
         date: new Date(),
         goalId,
         isRecurring: false,
         tags: ["goal-payment"],
       });
 
-      // Update the goal's current amount
       const goalRef = doc(db, "goals", goalId);
       await updateDoc(goalRef, {
         currentAmount: increment(amount),
         updatedAt: serverTimestamp(),
       });
+
+      const updatedGoals = await this.getUserGoals(userId);
+      const goalAfter = updatedGoals.find((g) => g.id === goalId);
+
+      if (goalAfter) {
+        await GoalNotificationService.notifyGoalPayment(
+          goalAfter,
+          amount,
+          false
+        );
+
+        await GoalNotificationService.updateGoalProgress(
+          userId,
+          goalId,
+          amount
+        );
+
+        if (
+          goalAfter.currentAmount >= goalAfter.targetAmount &&
+          !goalAfter.isCompleted
+        ) {
+          await this.completeGoal(goalId);
+        }
+      }
 
       console.log("✅ Goal payment processed:", goalId, "amount:", amount);
       return transactionId;
@@ -143,9 +185,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Withdraw money from a goal back to an account
-   */
   static async withdrawFromGoal(
     userId: string,
     goalId: string,
@@ -154,7 +193,6 @@ export class GoalService {
     description: string = "Goal withdrawal"
   ): Promise<string> {
     try {
-      // Validate that goal has enough balance for withdrawal
       const goals = await this.getUserGoals(userId);
       const goal = goals.find((g) => g.id === goalId);
 
@@ -168,26 +206,35 @@ export class GoalService {
         );
       }
 
-      // Create a transaction for the goal withdrawal (income to the account)
       const transactionId = await TransactionService.createTransaction(userId, {
         type: "goal_payment",
         amount,
         currency: "USD",
         description,
-        toAccountId, // Money goes TO the account
-        // categoryId omitted for goal transactions
+        toAccountId,
+
         date: new Date(),
         goalId,
         isRecurring: false,
         tags: ["goal-withdrawal"],
       });
 
-      // Update the goal's current amount (decrease)
       const goalRef = doc(db, "goals", goalId);
       await updateDoc(goalRef, {
-        currentAmount: increment(-amount), // Negative increment to subtract
+        currentAmount: increment(-amount),
         updatedAt: serverTimestamp(),
       });
+
+      const updatedGoals = await this.getUserGoals(userId);
+      const updatedGoal = updatedGoals.find((g) => g.id === goalId);
+
+      if (updatedGoal) {
+        await GoalNotificationService.notifyGoalPayment(
+          updatedGoal,
+          amount,
+          true
+        );
+      }
 
       console.log("✅ Goal withdrawal processed:", goalId, "amount:", amount);
       return transactionId;
@@ -197,9 +244,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Set up automatic transfers for a goal
-   */
   static async setupAutoTransfer(
     goalId: string,
     autoPaymentSettings: {
@@ -235,7 +279,6 @@ export class GoalService {
 
       const goalRef = doc(db, "goals", goalId);
 
-      // Filter out undefined values to prevent Firebase errors
       const filteredAutoPaymentSettings = Object.fromEntries(
         Object.entries(autoPaymentSettings).filter(
           ([_, value]) => value !== undefined
@@ -249,12 +292,38 @@ export class GoalService {
         updatedAt: serverTimestamp(),
       };
 
-      // Only add nextPaymentDate if it's not undefined
       if (nextPaymentDate !== undefined) {
         updateData.autoPayment.nextPaymentDate = nextPaymentDate;
       }
 
       await updateDoc(goalRef, updateData);
+
+      if (autoPaymentSettings.enabled) {
+        await NotificationService.sendNotification(
+          "🤖 Auto-Transfer Enabled",
+          `Automatic transfers of $${autoPaymentSettings.amount?.toFixed(2)} set up ${autoPaymentSettings.frequency} for your goal`,
+          {
+            type: "goal_update",
+            goalId,
+            goalName: "Goal Auto-Transfer",
+            targetAmount: 0,
+            currentAmount: 0,
+            addedAmount: autoPaymentSettings.amount || 0,
+          }
+        );
+      } else {
+        await NotificationService.sendNotification(
+          "⏸️ Auto-Transfer Disabled",
+          "Automatic transfers have been disabled for your goal",
+          {
+            type: "goal_update",
+            goalId,
+            goalName: "Goal Auto-Transfer",
+            targetAmount: 0,
+            currentAmount: 0,
+          }
+        );
+      }
 
       console.log("✅ Auto-transfer setup updated for goal:", goalId);
     } catch (error) {
@@ -263,13 +332,11 @@ export class GoalService {
     }
   }
 
-  /**
-   * Process automatic transfers for all eligible goals
-   */
   static async processAutoTransfers(userId: string): Promise<void> {
     try {
       const activeGoals = await this.getActiveGoals(userId);
       const now = new Date();
+      let transfersProcessed = 0;
 
       for (const goal of activeGoals) {
         if (
@@ -281,7 +348,11 @@ export class GoalService {
           goal.autoPayment.amount > 0
         ) {
           try {
-            // Process the auto payment
+            const accountName = await this.getAccountName(
+              userId,
+              goal.autoPayment.fromAccountId
+            );
+
             await this.payTowardGoal(
               userId,
               goal.id,
@@ -290,7 +361,17 @@ export class GoalService {
               `Auto-transfer to ${goal.name}`
             );
 
-            // Calculate next payment date
+            const updatedGoals = await this.getUserGoals(userId);
+            const updatedGoal = updatedGoals.find((g) => g.id === goal.id);
+
+            if (updatedGoal) {
+              await GoalNotificationService.notifyAutoTransfer(
+                updatedGoal,
+                goal.autoPayment.amount,
+                accountName || "Unknown Account"
+              );
+            }
+
             const nextDate = new Date(goal.autoPayment.nextPaymentDate);
             switch (goal.autoPayment.frequency) {
               case "daily":
@@ -307,12 +388,13 @@ export class GoalService {
                 break;
             }
 
-            // Update next payment date
-            await this.setupAutoTransfer(goal.id, {
-              ...goal.autoPayment,
-              nextPaymentDate: nextDate,
+            const goalRef = doc(db, "goals", goal.id);
+            await updateDoc(goalRef, {
+              "autoPayment.nextPaymentDate": nextDate,
+              updatedAt: serverTimestamp(),
             });
 
+            transfersProcessed++;
             console.log(`✅ Auto-transfer processed for goal: ${goal.name}`);
           } catch (error) {
             console.error(
@@ -322,15 +404,26 @@ export class GoalService {
           }
         }
       }
+
+      if (transfersProcessed > 0) {
+        await NotificationService.sendNotification(
+          "🤖 Auto-Transfers Complete",
+          `${transfersProcessed} automatic transfer(s) processed successfully`,
+          {
+            type: "goal_update",
+            goalId: "auto-transfer-summary",
+            goalName: "Auto-Transfer Summary",
+            targetAmount: 0,
+            currentAmount: 0,
+          }
+        );
+      }
     } catch (error) {
       console.error("❌ Error processing auto-transfers:", error);
       throw error;
     }
   }
 
-  /**
-   * Mark a goal as completed
-   */
   static async completeGoal(goalId: string): Promise<void> {
     try {
       const goalRef = doc(db, "goals", goalId);
@@ -346,9 +439,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Get active goals (not completed)
-   */
   static async getActiveGoals(userId: string): Promise<Goal[]> {
     try {
       const allGoals = await this.getUserGoals(userId);
@@ -359,9 +449,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Get completed goals
-   */
   static async getCompletedGoals(userId: string): Promise<Goal[]> {
     try {
       const allGoals = await this.getUserGoals(userId);
@@ -372,9 +459,6 @@ export class GoalService {
     }
   }
 
-  /**
-   * Get goals by category
-   */
   static async getGoalsByCategory(
     userId: string,
     category: string
@@ -388,45 +472,62 @@ export class GoalService {
     }
   }
 
-  /**
-   * Calculate goal progress percentage
-   */
   static calculateGoalProgress(goal: Goal): number {
     if (goal.targetAmount === 0) return 0;
     return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
   }
 
-  /**
-   * Get goals that are due soon (within specified days)
-   */
   static async getGoalsDueSoon(
     userId: string,
-    daysAhead: number = 30
+    daysAhead: number = 30,
+    sendNotifications: boolean = false
   ): Promise<Goal[]> {
     try {
       const allGoals = await this.getActiveGoals(userId);
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() + daysAhead);
 
-      return allGoals.filter((goal) => goal.targetDate <= cutoffDate);
+      const goalsDueSoon = allGoals.filter(
+        (goal) => goal.targetDate <= cutoffDate
+      );
+
+      if (sendNotifications) {
+        for (const goal of goalsDueSoon) {
+          const now = new Date();
+          const timeDiff = goal.targetDate.getTime() - now.getTime();
+          const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+          await GoalNotificationService.notifyGoalDeadline(goal, daysRemaining);
+        }
+      }
+
+      return goalsDueSoon;
     } catch (error) {
       console.error("❌ Error fetching goals due soon:", error);
       throw error;
     }
   }
 
-  /**
-   * Delete a goal
-   */
-  static async deleteGoal(goalId: string): Promise<void> {
+  static async deleteGoal(goalId: string, goalName?: string): Promise<void> {
     try {
       const goalRef = doc(db, "goals", goalId);
-      // In a real implementation, you might want to check if there are any
-      // transactions associated with this goal before deleting
+
       await updateDoc(goalRef, {
         isActive: false,
         updatedAt: serverTimestamp(),
       });
+
+      await NotificationService.sendNotification(
+        "🗑️ Goal Deleted",
+        `"${goalName || "Your goal"}" has been removed from your goals list`,
+        {
+          type: "goal_update",
+          goalId,
+          goalName: goalName || "Deleted Goal",
+          targetAmount: 0,
+          currentAmount: 0,
+        }
+      );
 
       console.log("✅ Goal deactivated:", goalId);
     } catch (error) {
@@ -435,21 +536,48 @@ export class GoalService {
     }
   }
 
-  /**
-   * Add a milestone to a goal
-   */
+  private static async getAccountName(
+    userId: string,
+    accountId: string
+  ): Promise<string | null> {
+    try {
+      return `Account ${accountId.slice(-4)}`;
+    } catch (error) {
+      console.error("❌ Error getting account name:", error);
+      return null;
+    }
+  }
+
+  static async sendDailyGoalReminders(userId: string): Promise<void> {
+    try {
+      await GoalNotificationService.checkGoalDeadlines(userId);
+      await GoalNotificationService.sendProgressSummary(userId);
+    } catch (error) {
+      console.error("❌ Error sending daily goal reminders:", error);
+    }
+  }
+
   static async addGoalMilestone(
     goalId: string,
     milestone: { amount: number; date: Date; note?: string }
   ): Promise<void> {
     try {
-      // Note: This would require updating the Goal type to include milestones as an array
-      // For now, this is a placeholder implementation
       const goalRef = doc(db, "goals", goalId);
       await updateDoc(goalRef, {
-        // milestones: arrayUnion(milestone), // Would need to import arrayUnion
         updatedAt: serverTimestamp(),
       });
+
+      await NotificationService.sendNotification(
+        "🎯 Milestone Added",
+        `New milestone of $${milestone.amount.toFixed(2)} added to your goal${milestone.note ? ": " + milestone.note : ""}`,
+        {
+          type: "goal_milestone",
+          goalId,
+          goalName: "Goal Milestone",
+          targetAmount: milestone.amount,
+          currentAmount: 0,
+        }
+      );
 
       console.log("✅ Milestone added to goal:", goalId);
     } catch (error) {
