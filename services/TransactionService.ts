@@ -12,11 +12,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { Transaction } from "../types/finance";
+import { BalanceNotificationService } from "./BalanceNotificationService";
+import { GoalNotificationService } from "./GoalNotificationService";
+import { NotificationService } from "./NotificationService";
 
 export class TransactionService {
-  /**
-   * Create a new transaction and update account balances
-   */
   static async createTransaction(
     userId: string,
     transactionData: Omit<
@@ -27,10 +27,8 @@ export class TransactionService {
     const batch = writeBatch(db);
 
     try {
-      // Create the transaction
       const transactionRef = doc(collection(db, "transactions"));
 
-      // Prepare transaction data with defined values only
       const baseData: any = {
         id: transactionRef.id,
         userId,
@@ -44,7 +42,6 @@ export class TransactionService {
         updatedAt: serverTimestamp(),
       };
 
-      // Add optional fields only if they have values
       if (transactionData.categoryId !== undefined) {
         baseData.categoryId = transactionData.categoryId;
       }
@@ -78,47 +75,94 @@ export class TransactionService {
 
       batch.set(transactionRef, baseData);
 
-      // Update account balances
+      let affectedAccountId: string | null = null;
+      let affectedAccountName: string = "";
+      let newBalance: number = 0;
+
       if (transactionData.type === "expense" && transactionData.fromAccountId) {
-        // Deduct from account
         const accountRef = doc(db, "accounts", transactionData.fromAccountId);
         batch.update(accountRef, {
           balance: increment(-transactionData.amount),
           updatedAt: serverTimestamp(),
         });
+
+        affectedAccountId = transactionData.fromAccountId;
+
+        const accountData = await this.getAccountById(
+          userId,
+          transactionData.fromAccountId
+        );
+        if (accountData) {
+          affectedAccountName = accountData.name;
+          newBalance = accountData.balance - transactionData.amount;
+        }
       } else if (
         transactionData.type === "income" &&
         transactionData.toAccountId
       ) {
-        // Add to account
         const accountRef = doc(db, "accounts", transactionData.toAccountId);
         batch.update(accountRef, {
           balance: increment(transactionData.amount),
           updatedAt: serverTimestamp(),
         });
+
+        affectedAccountId = transactionData.toAccountId;
+
+        const accountData = await this.getAccountById(
+          userId,
+          transactionData.toAccountId
+        );
+        if (accountData) {
+          affectedAccountName = accountData.name;
+          newBalance = accountData.balance + transactionData.amount;
+        }
       } else if (transactionData.type === "goal_payment") {
-        // Handle goal payments - could be deposit (fromAccountId) or withdrawal (toAccountId)
         if (transactionData.fromAccountId) {
-          // Goal deposit: deduct from account
           const accountRef = doc(db, "accounts", transactionData.fromAccountId);
           batch.update(accountRef, {
             balance: increment(-transactionData.amount),
             updatedAt: serverTimestamp(),
           });
+
+          affectedAccountId = transactionData.fromAccountId;
+          const accountData = await this.getAccountById(
+            userId,
+            transactionData.fromAccountId
+          );
+          if (accountData) {
+            affectedAccountName = accountData.name;
+            newBalance = accountData.balance - transactionData.amount;
+          }
+
+          if (transactionData.goalId) {
+            await GoalNotificationService.updateGoalProgress(
+              userId,
+              transactionData.goalId,
+              transactionData.amount
+            );
+          }
         } else if (transactionData.toAccountId) {
-          // Goal withdrawal: add to account
           const accountRef = doc(db, "accounts", transactionData.toAccountId);
           batch.update(accountRef, {
             balance: increment(transactionData.amount),
             updatedAt: serverTimestamp(),
           });
+
+          affectedAccountId = transactionData.toAccountId;
+          const accountData = await this.getAccountById(
+            userId,
+            transactionData.toAccountId
+          );
+          if (accountData) {
+            affectedAccountName = accountData.name;
+            newBalance = accountData.balance + transactionData.amount;
+          }
         }
       } else if (
         transactionData.type === "transfer" &&
         transactionData.fromAccountId &&
         transactionData.toAccountId
       ) {
-        // Deduct from source account
         const fromAccountRef = doc(
           db,
           "accounts",
@@ -129,16 +173,34 @@ export class TransactionService {
           updatedAt: serverTimestamp(),
         });
 
-        // Add to destination account
         const toAccountRef = doc(db, "accounts", transactionData.toAccountId);
         batch.update(toAccountRef, {
           balance: increment(transactionData.amount),
           updatedAt: serverTimestamp(),
         });
+
+        affectedAccountId = transactionData.fromAccountId;
+        const fromAccountData = await this.getAccountById(
+          userId,
+          transactionData.fromAccountId
+        );
+        if (fromAccountData) {
+          affectedAccountName = fromAccountData.name;
+          newBalance = fromAccountData.balance - transactionData.amount;
+        }
       }
 
       await batch.commit();
       console.log("✅ Transaction created with ID:", transactionRef.id);
+
+      await this.sendTransactionNotifications(
+        userId,
+        transactionData,
+        affectedAccountId,
+        affectedAccountName,
+        newBalance
+      );
+
       return transactionRef.id;
     } catch (error) {
       console.error("❌ Error creating transaction:", error);
@@ -146,9 +208,291 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Get transactions for a user with optional filters
-   */
+  private static async sendTransactionNotifications(
+    userId: string,
+    transactionData: Omit<
+      Transaction,
+      "id" | "userId" | "createdAt" | "updatedAt"
+    >,
+    affectedAccountId: string | null,
+    affectedAccountName: string,
+    newBalance: number
+  ): Promise<void> {
+    try {
+      const transactionType = this.getTransactionNotificationType(
+        transactionData.type,
+        transactionData.amount
+      );
+      const categoryName = await this.getCategoryName(
+        transactionData.categoryId
+      );
+
+      await NotificationService.notifyTransaction(
+        transactionData.amount,
+        transactionType,
+        categoryName || transactionData.description
+      );
+
+      await BalanceNotificationService.checkLargeTransaction(
+        transactionData.amount,
+        affectedAccountName,
+        transactionType
+      );
+
+      if (
+        transactionData.type === "expense" ||
+        (transactionData.type === "goal_payment" &&
+          transactionData.fromAccountId)
+      ) {
+        await this.checkDailyLimits(userId, transactionData.amount);
+      }
+
+      if (
+        affectedAccountId &&
+        affectedAccountName &&
+        (transactionData.type === "expense" ||
+          transactionData.type === "goal_payment")
+      ) {
+        await BalanceNotificationService.checkLowBalance(
+          userId,
+          affectedAccountId,
+          newBalance,
+          affectedAccountName
+        );
+      }
+
+      if (
+        affectedAccountId &&
+        (transactionData.type === "expense" ||
+          (transactionData.type === "goal_payment" &&
+            transactionData.fromAccountId))
+      ) {
+        await this.checkAccountBudget(
+          userId,
+          affectedAccountId,
+          transactionData.amount
+        );
+      }
+
+      if (
+        transactionData.type === "transfer" &&
+        transactionData.fromAccountId &&
+        transactionData.toAccountId
+      ) {
+        const fromAccount = await this.getAccountById(
+          userId,
+          transactionData.fromAccountId
+        );
+        const toAccount = await this.getAccountById(
+          userId,
+          transactionData.toAccountId
+        );
+
+        if (fromAccount && toAccount) {
+          await NotificationService.sendNotification(
+            "💳 Transfer Completed",
+            `$${transactionData.amount.toFixed(2)} transferred from ${fromAccount.name} to ${toAccount.name}`,
+            {
+              type: "large_transaction",
+              accountId: transactionData.fromAccountId,
+              accountName: fromAccount.name,
+              amount: transactionData.amount,
+            }
+          );
+        }
+      }
+
+      console.log("✅ All transaction notifications sent");
+    } catch (error) {
+      console.error("❌ Error sending transaction notifications:", error);
+    }
+  }
+
+  private static getTransactionNotificationType(
+    type: Transaction["type"],
+    amount: number
+  ): "income" | "expense" {
+    switch (type) {
+      case "income":
+        return "income";
+      case "expense":
+        return "expense";
+      case "goal_payment":
+        return amount > 0 ? "income" : "expense";
+      case "transfer":
+        return "expense";
+      default:
+        return amount > 0 ? "income" : "expense";
+    }
+  }
+
+  private static async checkDailyLimits(
+    userId: string,
+    expenseAmount: number
+  ): Promise<void> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const todayTransactions = await this.getTransactionsByDateRange(
+        userId,
+        today,
+        endOfDay
+      );
+      const todaySpent = todayTransactions
+        .filter(
+          (t) =>
+            t.type === "expense" ||
+            (t.type === "goal_payment" && t.fromAccountId)
+        )
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const dailyLimit = await this.getUserDailyLimit(userId);
+
+      if (todaySpent >= dailyLimit) {
+        await NotificationService.notifyDailyLimit(
+          todaySpent,
+          dailyLimit,
+          "exceeded"
+        );
+      } else if (todaySpent >= dailyLimit * 0.8) {
+        await NotificationService.notifyDailyLimit(
+          todaySpent,
+          dailyLimit,
+          "warning"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error checking daily limits:", error);
+    }
+  }
+
+  private static async checkAccountBudget(
+    userId: string,
+    accountId: string,
+    expenseAmount: number
+  ): Promise<void> {
+    try {
+      const account = await this.getAccountById(userId, accountId);
+      if (!account?.budget || account.budget <= 0) return;
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const monthEnd = new Date(monthStart);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+      monthEnd.setDate(0);
+      monthEnd.setHours(23, 59, 59, 999);
+
+      const monthTransactions = await this.getUserTransactions(userId, {
+        accountId: accountId,
+        startDate: monthStart,
+        endDate: monthEnd,
+      });
+
+      const monthSpent = monthTransactions
+        .filter(
+          (t) =>
+            t.type === "expense" ||
+            (t.type === "goal_payment" && t.fromAccountId === accountId)
+        )
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const budget = account.budget;
+      const percentage = Math.round((monthSpent / budget) * 100);
+
+      if (monthSpent >= budget) {
+        await NotificationService.sendNotification(
+          "💳 Budget Exceeded",
+          `Your ${account.name} account has exceeded its monthly budget. Spent: $${monthSpent.toFixed(2)} of $${budget}`,
+          {
+            type: "budget_exceeded",
+            accountId,
+            accountName: account.name,
+            spent: monthSpent,
+            budget,
+          }
+        );
+      } else if (percentage >= 80) {
+        await NotificationService.sendNotification(
+          "⚠️ Budget Warning",
+          `You've used ${percentage}% of your ${account.name} budget ($${monthSpent.toFixed(2)} of $${budget})`,
+          {
+            type: "budget_warning",
+            accountId,
+            accountName: account.name,
+            spent: monthSpent,
+            budget,
+            percentage,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error checking account budget:", error);
+    }
+  }
+
+  private static async getUserDailyLimit(userId: string): Promise<number> {
+    try {
+      return 100;
+    } catch (error) {
+      console.error("❌ Error getting user daily limit:", error);
+      return 100;
+    }
+  }
+
+  private static async getAccountById(
+    userId: string,
+    accountId: string
+  ): Promise<any> {
+    try {
+      const accountsQuery = query(
+        collection(db, "accounts"),
+        where("userId", "==", userId),
+        where("id", "==", accountId)
+      );
+
+      const querySnapshot = await getDocs(accountsQuery);
+
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data();
+      }
+
+      return null;
+    } catch (error) {
+      console.error("❌ Error getting account:", error);
+      return null;
+    }
+  }
+
+  private static async getCategoryName(
+    categoryId?: string
+  ): Promise<string | null> {
+    if (!categoryId) return null;
+
+    try {
+      const categoryQuery = query(
+        collection(db, "categories"),
+        where("id", "==", categoryId)
+      );
+
+      const querySnapshot = await getDocs(categoryQuery);
+
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data().name;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("❌ Error getting category name:", error);
+      return null;
+    }
+  }
+
   static async getUserTransactions(
     userId: string,
     options?: {
@@ -168,7 +512,6 @@ export class TransactionService {
         options
       );
 
-      // Start with just the userId filter to avoid composite index issues
       let q = query(
         collection(db, "transactions"),
         where("userId", "==", userId)
@@ -188,7 +531,6 @@ export class TransactionService {
           }) as Transaction
       );
 
-      // Apply filters in memory to avoid composite index requirements
       if (options?.type) {
         transactions = transactions.filter((t) => t.type === options.type);
       }
@@ -215,10 +557,8 @@ export class TransactionService {
         transactions = transactions.filter((t) => t.date <= options.endDate!);
       }
 
-      // Sort by date descending
       transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-      // Apply limit after all filtering and sorting
       if (options?.limit) {
         transactions = transactions.slice(0, options.limit);
       }
@@ -231,9 +571,6 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Update a transaction
-   */
   static async updateTransaction(
     transactionId: string,
     updateData: Partial<Omit<Transaction, "id" | "userId" | "createdAt">>
@@ -245,6 +582,23 @@ export class TransactionService {
         updatedAt: serverTimestamp(),
       });
 
+      if (
+        updateData.amount ||
+        updateData.description ||
+        updateData.categoryId
+      ) {
+        await NotificationService.sendNotification(
+          "📝 Transaction Updated",
+          `A transaction has been modified${updateData.description ? ": " + updateData.description : ""}`,
+          {
+            type: "transaction",
+            amount: updateData.amount || 0,
+            category: updateData.categoryId,
+            transactionType: "expense",
+          }
+        );
+      }
+
       console.log("✅ Transaction updated:", transactionId);
     } catch (error) {
       console.error("❌ Error updating transaction:", error);
@@ -252,14 +606,10 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Delete a transaction (and reverse account balance changes)
-   */
   static async deleteTransaction(transactionId: string): Promise<void> {
     const batch = writeBatch(db);
 
     try {
-      // First, get the transaction to reverse the balance changes
       const transactionRef = doc(db, "transactions", transactionId);
       const transactionDoc = await getDocs(
         query(collection(db, "transactions"), where("id", "==", transactionId))
@@ -271,16 +621,13 @@ export class TransactionService {
 
       const transaction = transactionDoc.docs[0].data() as Transaction;
 
-      // Reverse the account balance changes
       if (transaction.type === "expense" && transaction.fromAccountId) {
-        // Add back to account (reverse the deduction)
         const accountRef = doc(db, "accounts", transaction.fromAccountId);
         batch.update(accountRef, {
           balance: increment(transaction.amount),
           updatedAt: serverTimestamp(),
         });
       } else if (transaction.type === "income" && transaction.toAccountId) {
-        // Deduct from account (reverse the addition)
         const accountRef = doc(db, "accounts", transaction.toAccountId);
         batch.update(accountRef, {
           balance: increment(-transaction.amount),
@@ -291,14 +638,12 @@ export class TransactionService {
         transaction.fromAccountId &&
         transaction.toAccountId
       ) {
-        // Add back to source account
         const fromAccountRef = doc(db, "accounts", transaction.fromAccountId);
         batch.update(fromAccountRef, {
           balance: increment(transaction.amount),
           updatedAt: serverTimestamp(),
         });
 
-        // Deduct from destination account
         const toAccountRef = doc(db, "accounts", transaction.toAccountId);
         batch.update(toAccountRef, {
           balance: increment(-transaction.amount),
@@ -306,13 +651,24 @@ export class TransactionService {
         });
       }
 
-      // Mark transaction as deleted (soft delete)
       batch.update(transactionRef, {
         isDeleted: true,
         updatedAt: serverTimestamp(),
       });
 
       await batch.commit();
+
+      await NotificationService.sendNotification(
+        "🗑️ Transaction Deleted",
+        `A ${transaction.type} of $${Math.abs(transaction.amount).toFixed(2)} has been removed`,
+        {
+          type: "transaction",
+          amount: transaction.amount,
+          category: transaction.categoryId,
+          transactionType: transaction.amount > 0 ? "income" : "expense",
+        }
+      );
+
       console.log("✅ Transaction deleted:", transactionId);
     } catch (error) {
       console.error("❌ Error deleting transaction:", error);
@@ -320,9 +676,6 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Get transactions by date range
-   */
   static async getTransactionsByDateRange(
     userId: string,
     startDate: Date,
@@ -334,9 +687,6 @@ export class TransactionService {
     });
   }
 
-  /**
-   * Get recent transactions
-   */
   static async getRecentTransactions(
     userId: string,
     limit: number = 10
@@ -344,15 +694,11 @@ export class TransactionService {
     return this.getUserTransactions(userId, { limit });
   }
 
-  /**
-   * Listen to transaction changes in real-time
-   */
   static subscribeToTransactions(
     userId: string,
     callback: (transactions: Transaction[]) => void,
     limitCount: number = 50
   ): () => void {
-    // Simplified query to avoid composite index requirement
     const q = query(
       collection(db, "transactions"),
       where("userId", "==", userId)
@@ -361,7 +707,6 @@ export class TransactionService {
     return onSnapshot(
       q,
       (querySnapshot) => {
-        // Sort and limit in memory to avoid index requirement
         const transactions = querySnapshot.docs
           .map(
             (doc) =>
@@ -382,5 +727,44 @@ export class TransactionService {
         console.error("❌ Error in transactions listener:", error);
       }
     );
+  }
+
+  static async checkTodaySpending(userId: string): Promise<{
+    spent: number;
+    limit: number;
+    percentage: number;
+  }> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const todayTransactions = await this.getTransactionsByDateRange(
+        userId,
+        today,
+        endOfDay
+      );
+      const todaySpent = todayTransactions
+        .filter(
+          (t) =>
+            t.type === "expense" ||
+            (t.type === "goal_payment" && t.fromAccountId)
+        )
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const dailyLimit = await this.getUserDailyLimit(userId);
+      const percentage = Math.round((todaySpent / dailyLimit) * 100);
+
+      return {
+        spent: todaySpent,
+        limit: dailyLimit,
+        percentage,
+      };
+    } catch (error) {
+      console.error("❌ Error checking today spending:", error);
+      return { spent: 0, limit: 100, percentage: 0 };
+    }
   }
 }
