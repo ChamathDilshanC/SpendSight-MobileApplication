@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { Alert } from "react-native";
 
-// Firebase Imports
+
 import {
   createUserWithEmailAndPassword,
   User as FirebaseUser,
@@ -21,7 +21,7 @@ import {
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
-// Local Imports
+
 import {
   AuthContextType,
   AuthState,
@@ -31,7 +31,7 @@ import {
 } from "../types/user";
 import { SessionManager } from "../utils/sessionManager";
 
-// Conditionally import GoogleSignin - only if available
+
 let GoogleSignin: any = null;
 try {
   const {
@@ -42,15 +42,14 @@ try {
   console.log("Google Sign-In not available - this is expected in Expo Go");
 }
 
-// Initial state
 const initialAuthState: AuthState = {
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  isInitialized: false,
   error: null,
 };
 
-// Action types
 type AuthAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
@@ -59,30 +58,51 @@ type AuthAction =
   | { type: "UPDATE_USER"; payload: Partial<User> }
   | { type: "CLEAR_ERROR" };
 
-// Reducer
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "SET_LOADING":
-      return { ...state, isLoading: action.payload };
+      return {
+        ...state,
+        isLoading: action.payload,
+      };
+
     case "SET_ERROR":
-      return { ...state, error: action.payload, isLoading: false };
+      return {
+        ...state,
+        error: action.payload,
+        isLoading: false,
+        isInitialized: true,
+      };
+
     case "LOGIN_SUCCESS":
       return {
         ...state,
         user: action.payload,
         isAuthenticated: true,
         isLoading: false,
+        isInitialized: true,
         error: null,
       };
+
     case "LOGOUT":
-      return { ...initialAuthState, isLoading: false };
+      return {
+        ...initialAuthState,
+        isLoading: false,
+        isInitialized: true,
+      };
+
     case "UPDATE_USER":
       return {
         ...state,
         user: state.user ? { ...state.user, ...action.payload } : null,
       };
+
     case "CLEAR_ERROR":
-      return { ...state, error: null };
+      return {
+        ...state,
+        error: null,
+      };
+
     default:
       return state;
   }
@@ -140,7 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
   useEffect(() => {
-    // Only configure Google Sign-In if available (not in Expo Go)
+
     if (GoogleSignin) {
       try {
         GoogleSignin.configure({
@@ -302,7 +322,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "CLEAR_ERROR" });
 
-    // Check if Google Sign-In is available
+
     if (!GoogleSignin) {
       dispatch({
         type: "SET_ERROR",
@@ -368,7 +388,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       console.log("🚪 Logging out user...");
 
-      // Sign out from Google if signed in and available
+
       if (GoogleSignin) {
         try {
           const currentUser = await GoogleSignin.getCurrentUser();
