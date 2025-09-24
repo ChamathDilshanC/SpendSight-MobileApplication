@@ -1,9 +1,11 @@
+import { UserProfileService } from "@/services/UserProfileService";
 import { Ionicons } from "@expo/vector-icons";
 import { MotiView } from "moti";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Image,
   ScrollView,
   StatusBar,
   Text,
@@ -36,13 +38,12 @@ const DashboardContent = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
-
-
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const hasLoadedImageRef = useRef<string | null>(null);
   const autoSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUserInteracting = useRef(false);
   const componentMounted = useRef(true);
   const [autoSwipeEnabled, setAutoSwipeEnabled] = useState(true);
-
 
   const autoSwipeInterval = 4000;
   const loopAutoSwipe = true;
@@ -52,14 +53,12 @@ const DashboardContent = () => {
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
 
-
   const clearAutoSwipeTimer = useCallback(() => {
     if (autoSwipeTimerRef.current) {
       clearTimeout(autoSwipeTimerRef.current);
       autoSwipeTimerRef.current = null;
     }
   }, []);
-
 
   const doAutoSwipe = useCallback(() => {
     if (
@@ -84,7 +83,6 @@ const DashboardContent = () => {
     setCurrentAccountIndex(nextIndex);
   }, [currentAccountIndex, accounts, loopAutoSwipe, autoSwipeEnabled]);
 
-
   const startAutoSwipeTimer = useCallback(() => {
     if (!autoSwipeEnabled || !accounts || accounts.length <= 1) {
       return;
@@ -107,7 +105,6 @@ const DashboardContent = () => {
     doAutoSwipe,
   ]);
 
-
   const toggleAutoSwipe = useCallback(() => {
     setAutoSwipeEnabled((prev) => {
       const newState = !prev;
@@ -119,7 +116,6 @@ const DashboardContent = () => {
       return newState;
     });
   }, [clearAutoSwipeTimer, startAutoSwipeTimer]);
-
 
   useEffect(() => {
     if (autoSwipeEnabled && accounts && accounts.length > 1) {
@@ -136,7 +132,6 @@ const DashboardContent = () => {
     startAutoSwipeTimer,
     clearAutoSwipeTimer,
   ]);
-
 
   useEffect(() => {
     return () => {
@@ -178,6 +173,50 @@ const DashboardContent = () => {
 
     checkFirstTimeUser();
   }, [authState?.user?.id, authState?.isLoading]);
+
+  useEffect(() => {
+    const loadProfileImage = async () => {
+      const userId = authState?.user?.id;
+
+      if (!userId || hasLoadedImageRef.current === userId) {
+        return;
+      }
+
+      try {
+        const existingImage =
+          authState.user?.profileImage || authState.user?.profilePicture;
+
+        if (existingImage) {
+          setProfileImage(existingImage);
+          hasLoadedImageRef.current = userId;
+          return;
+        }
+
+        const imageUrl = await UserProfileService.getUserProfileImage(userId);
+        setProfileImage(imageUrl);
+        hasLoadedImageRef.current = userId;
+      } catch (error) {
+        console.error("Failed to load profile image:", error);
+        hasLoadedImageRef.current = userId;
+      }
+    };
+
+    if (authState?.user?.id) {
+      loadProfileImage();
+    }
+  }, [authState?.user?.id]);
+
+  useEffect(() => {
+    const currentUserId = authState?.user?.id;
+
+    if (
+      hasLoadedImageRef.current &&
+      hasLoadedImageRef.current !== currentUserId
+    ) {
+      setProfileImage(null);
+      hasLoadedImageRef.current = null;
+    }
+  }, [authState?.user?.id]);
 
   const showBudgetPrompt = () => {
     Alert.alert(
@@ -269,7 +308,12 @@ const DashboardContent = () => {
       Alert.alert(
         "Success! 🎉",
         `Your accounts have been set up successfully!\n\n6 accounts created with smart budget allocation:\n• Main Account: $${(budget * 0.35).toFixed(0)}\n• Savings Account: $${(budget * 0.2).toFixed(0)}\n• Expenses Account: $${(budget * 0.25).toFixed(0)}\n• Investment Account: $${(budget * 0.1).toFixed(0)}\n• Emergency Fund: $${(budget * 0.05).toFixed(0)}\n• Goals & Dreams: $${(budget * 0.05).toFixed(0)}`,
-        [{ text: "Get Started!" }]
+        [
+          {
+            text: "Get Started!",
+            onPress: () => NavigationManager.navigateToAccountsSection(),
+          },
+        ]
       );
     } catch (error) {
       console.error("❌ Error setting up budget:", error);
@@ -339,7 +383,6 @@ const DashboardContent = () => {
   };
 
   const openDrawer = () => {
-
     isUserInteracting.current = true;
     clearAutoSwipeTimer();
 
@@ -379,15 +422,12 @@ const DashboardContent = () => {
     }, 300);
   };
 
-
   const handleAccountSwipe = useCallback(
     (newIndex: number) => {
-
       isUserInteracting.current = true;
       clearAutoSwipeTimer();
 
       setCurrentAccountIndex(newIndex);
-
 
       setTimeout(() => {
         if (componentMounted.current) {
@@ -449,12 +489,10 @@ const DashboardContent = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
           onScrollBeginDrag={() => {
-
             isUserInteracting.current = true;
             clearAutoSwipeTimer();
           }}
           onScrollEndDrag={() => {
-
             setTimeout(() => {
               if (componentMounted.current) {
                 isUserInteracting.current = false;
@@ -465,7 +503,6 @@ const DashboardContent = () => {
             }, 1000);
           }}
         >
-          {}
           <MotiView
             from={{ opacity: 0, translateY: -20 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -474,17 +511,80 @@ const DashboardContent = () => {
               duration: 600,
               delay: 200,
             }}
-            className="px-5 pt-6 pb-4"
+            className="flex items-center px-5 pt-6 mx-4 my-4 pb-7 rounded-2xl"
           >
-            <Text className="pb-1 pl-4 text-2xl font-bold text-gray-900">
-              Welcome back,
-            </Text>
-            <Text className="pb-2 pl-4 text-base text-gray-600 ">
-              {authState?.user?.fullName &&
-              typeof authState.user.fullName === "string"
-                ? authState.user.fullName
-                : authState?.user?.email?.split("@")[0] || "User"} , have a great day ✌️!
-            </Text>
+            <View className="flex-row items-start gap-4">
+              <View
+                className="items-center justify-center w-16 h-16 rounded-full shadow-sm"
+                style={{
+                  backgroundColor: profileImage ? "transparent" : "#10B981",
+                  shadowColor: "#10B981",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 4,
+                }}
+              >
+                {profileImage ? (
+                  <Image
+                    source={{ uri: profileImage }}
+                    className="w-16 h-16 rounded-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text className="text-2xl font-bold text-white">
+                    {UserProfileService.getDefaultAvatar(
+                      authState?.user?.fullName
+                    )}
+                  </Text>
+                )}
+              </View>
+              {}
+              <View className="flex-1">
+                <Text className="text-2xl font-bold leading-tight text-gray-900">
+                  Welcome back ,
+                </Text>
+
+                <Text className="mt-1 text-base leading-relaxed text-gray-600">
+                  {authState?.user?.fullName &&
+                  typeof authState.user.fullName === "string"
+                    ? authState.user.fullName
+                    : authState?.user?.email?.split("@")[0] || "User"}
+                  , have a nice day !
+                </Text>
+
+                {}
+                {(() => {
+                  const now = new Date();
+                  const optionsDate: Intl.DateTimeFormatOptions = {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  };
+                  const optionsTime: Intl.DateTimeFormatOptions = {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  };
+
+                  const formattedDate = now.toLocaleDateString(
+                    "en-US",
+                    optionsDate
+                  );
+                  const formattedTime = now.toLocaleTimeString(
+                    "en-US",
+                    optionsTime
+                  );
+
+                  return (
+                    <Text className="mt-2 text-xs text-black-400 ">
+                      • {formattedDate} • 🕗 {formattedTime}
+                    </Text>
+                  );
+                })()}
+              </View>
+            </View>
           </MotiView>
 
           {}
@@ -543,7 +643,7 @@ const DashboardContent = () => {
               stiffness: 80,
               delay: 400,
             }}
-            className="mb-4"
+            className="pt-3 mb-4"
           >
             <AnimatedAccountCard
               accounts={accounts}
@@ -603,14 +703,12 @@ const DashboardContent = () => {
         </ScrollView>
 
         {}
-        {isDrawerVisible && (
-          <NavigationDrawer
-            isVisible={isDrawerVisible}
-            onClose={closeDrawer}
-            overlayAnimatedStyle={overlayAnimatedStyle}
-            drawerAnimatedStyle={drawerAnimatedStyle}
-          />
-        )}
+        <NavigationDrawer
+          isVisible={isDrawerVisible}
+          onClose={closeDrawer}
+          overlayAnimatedStyle={overlayAnimatedStyle}
+          drawerAnimatedStyle={drawerAnimatedStyle}
+        />
       </SafeAreaView>
     </>
   );
