@@ -8,12 +8,15 @@ import { TransactionDetails } from "../../components/TransactionDetails";
 import { TransactionForm } from "../../components/TransactionForm";
 import { TransactionList } from "../../components/TransactionList";
 import { useFinance } from "../../context/FinanceContext";
+import { useAuth } from "../../context/FirebaseAuthContext";
+import { TransactionService } from "../../services/TransactionService";
 import { Transaction } from "../../types/finance";
 
 type ViewMode = "list" | "add" | "edit" | "details";
 
 export default function TransactionsScreen() {
-  const { createTransaction, refreshData } = useFinance();
+  const { refreshData } = useFinance();
+  const { authState } = useAuth();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedTransaction, setSelectedTransaction] =
@@ -55,15 +58,20 @@ export default function TransactionsScreen() {
   };
 
   const handleSaveTransaction = async (transactionData: any) => {
+    if (!authState.user?.id) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (viewMode === "add") {
-        await createTransaction(transactionData);
+        await TransactionService.createTransaction(
+          authState.user.id,
+          transactionData
+        );
         Alert.alert("Success", "Transaction added successfully!");
       } else if (viewMode === "edit" && selectedTransaction) {
-        const { TransactionService } = await import(
-          "../../services/TransactionService"
-        );
         await TransactionService.updateTransaction(
           selectedTransaction.id,
           transactionData
@@ -108,9 +116,6 @@ export default function TransactionsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const { TransactionService } = await import(
-                "../../services/TransactionService"
-              );
               await TransactionService.deleteTransaction(
                 selectedTransaction.id
               );
@@ -159,7 +164,7 @@ export default function TransactionsScreen() {
         style={{ backgroundColor: "#f9fafb" }}
         edges={["top"]}
       >
-        {/* Conditionally render AppHeader - Hide when viewMode is details */}
+        {}
         {viewMode !== "details" && (
           <AppHeader
             title={getHeaderTitle()}
@@ -202,7 +207,7 @@ export default function TransactionsScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Floating Action Button - Only show in list and details view */}
+      {}
       {(viewMode === "list" || viewMode === "details") && (
         <View className="absolute bottom-10 right-6">
           <TouchableOpacity

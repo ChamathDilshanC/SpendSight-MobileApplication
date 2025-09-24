@@ -3,15 +3,26 @@ import React, { useState } from "react";
 import { Alert, View } from "react-native";
 import { TransactionForm } from "../../components/TransactionForm";
 import { useFinance } from "../../context/FinanceContext";
+import { useAuth } from "../../context/FirebaseAuthContext";
+import { TransactionService } from "../../services/TransactionService";
 
 export default function AddTransactionScreen() {
-  const { createTransaction, refreshData } = useFinance();
+  const { refreshData } = useFinance();
+  const { authState } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async (transactionData: any) => {
+    if (!authState.user?.id) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await createTransaction(transactionData);
+      await TransactionService.createTransaction(
+        authState.user.id,
+        transactionData
+      );
       await refreshData();
       Alert.alert("Success", "Transaction added successfully!");
       router.back();
