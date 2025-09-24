@@ -1,29 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Dimensions,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  Platform,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { GoalService } from "../../services/GoalService";
 import { Goal } from "../../types/finance";
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get("window");
 
 interface NewGoal {
   name: string;
@@ -45,7 +45,6 @@ export default function GoalsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
-  // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -143,13 +142,12 @@ export default function GoalsScreen() {
     "#16A34A",
   ];
 
-  // Date picker handlers
   const onDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowDatePicker(false);
     }
 
-    if (selectedDate && event.type !== 'dismissed') {
+    if (selectedDate && event.type !== "dismissed") {
       setNewGoal({ ...newGoal, targetDate: selectedDate });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -336,7 +334,8 @@ export default function GoalsScreen() {
     if (
       !selectedGoal ||
       !transactionForm.amount ||
-      !transactionForm.accountId
+      !transactionForm.accountId ||
+      !authState?.user?.id
     ) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Error", "Please fill in all required fields");
@@ -355,7 +354,7 @@ export default function GoalsScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       await GoalService.payTowardGoal(
-        authState.user!.id,
+        authState.user.id,
         selectedGoal.id,
         transactionForm.accountId,
         amount,
@@ -381,7 +380,8 @@ export default function GoalsScreen() {
     if (
       !selectedGoal ||
       !transactionForm.amount ||
-      !transactionForm.accountId
+      !transactionForm.accountId ||
+      !authState?.user?.id
     ) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Error", "Please fill in all required fields");
@@ -405,11 +405,11 @@ export default function GoalsScreen() {
       setLoading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      await GoalService.payTowardGoal(
-        authState.user!.id,
+      await GoalService.withdrawFromGoal(
+        authState.user.id,
         selectedGoal.id,
         transactionForm.accountId,
-        -amount,
+        amount,
         transactionForm.description.trim() ||
           `Withdrawal from ${selectedGoal.name}`
       );
@@ -442,7 +442,8 @@ export default function GoalsScreen() {
           onPress: async () => {
             try {
               setLoading(true);
-              await GoalService.deleteGoal(goal.id);
+
+              await GoalService.deleteGoal(goal.id, goal.name);
               await loadGoals();
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success
@@ -531,7 +532,7 @@ export default function GoalsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16 }}
       >
-        {/* Summary Card */}
+        {}
         <View className="mb-6">
           <View
             className="p-4 rounded-2xl"
@@ -810,7 +811,7 @@ export default function GoalsScreen() {
         <View className="h-10" />
       </ScrollView>
 
-      {/* FIXED Add/Edit Goal Modal */}
+      {}
       <Modal
         visible={showAddModal}
         transparent={true}
@@ -828,7 +829,7 @@ export default function GoalsScreen() {
               flex: 1,
             }}
           >
-            {/* Fixed Header */}
+            {}
             <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
               <Text className="text-xl font-bold text-gray-900">
                 {editingGoal ? "Edit Goal" : "Add New Goal"}
@@ -844,14 +845,14 @@ export default function GoalsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Scrollable Content */}
+            {}
             <ScrollView
               className="flex-1"
               contentContainerStyle={{ padding: 20 }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Goal Name */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Goal Name *
@@ -867,7 +868,7 @@ export default function GoalsScreen() {
                 />
               </View>
 
-              {/* Target Amount */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Target Amount *
@@ -884,7 +885,7 @@ export default function GoalsScreen() {
                 />
               </View>
 
-              {/* Category */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Category
@@ -928,7 +929,7 @@ export default function GoalsScreen() {
                 </ScrollView>
               </View>
 
-              {/* Target Date */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-black-700">
                   Target Date
@@ -954,8 +955,8 @@ export default function GoalsScreen() {
                   </View>
                 </TouchableOpacity>
 
-                {/* iOS Date Picker */}
-                {/* iOS Date Picker - FIXED */}
+                {}
+                {}
                 {showDatePicker && Platform.OS === "ios" && (
                   <View
                     className="mt-4 bg-white border border-gray-200 rounded-xl"
@@ -1003,7 +1004,7 @@ export default function GoalsScreen() {
                 )}
               </View>
 
-              {/* Description */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Description (Optional)
@@ -1021,7 +1022,7 @@ export default function GoalsScreen() {
                 />
               </View>
 
-              {/* Color Picker */}
+              {}
               <View className="mb-5">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Choose Color
@@ -1042,7 +1043,7 @@ export default function GoalsScreen() {
                 </View>
               </View>
 
-              {/* Icon Picker */}
+              {}
               <View className="mb-8">
                 <Text className="mb-3 text-base font-semibold text-gray-700">
                   Choose Icon
@@ -1069,7 +1070,7 @@ export default function GoalsScreen() {
               </View>
             </ScrollView>
 
-            {/* Fixed Bottom Buttons */}
+            {}
             <View className="p-4 bg-white border-t border-gray-100">
               <View className="flex-row gap-3">
                 <TouchableOpacity
@@ -1098,7 +1099,7 @@ export default function GoalsScreen() {
         </View>
       </Modal>
 
-      {/* Android Date Picker */}
+      {}
       {showDatePicker && Platform.OS === "android" && (
         <DateTimePicker
           value={newGoal.targetDate}
@@ -1109,7 +1110,7 @@ export default function GoalsScreen() {
         />
       )}
 
-      {/* Deposit Modal */}
+      {}
       <Modal
         visible={showDepositModal}
         transparent={true}
@@ -1229,7 +1230,7 @@ export default function GoalsScreen() {
         </View>
       </Modal>
 
-      {/* Withdraw Modal */}
+      {}
       <Modal
         visible={showWithdrawModal}
         transparent={true}
@@ -1348,7 +1349,7 @@ export default function GoalsScreen() {
         </View>
       </Modal>
 
-      {/* Floating Action Button */}
+      {}
       <View className="absolute bottom-10 right-6">
         <TouchableOpacity
           onPress={openAddModal}

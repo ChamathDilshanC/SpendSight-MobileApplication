@@ -28,12 +28,10 @@ const GetStartedScreen = () => {
   }, []);
 
   const handleGetStarted = () => {
-    // Use replace to prevent back navigation to GetStarted screen
     NavigationManager.navigateToSignupFromGetStarted();
   };
 
   const handleLogin = () => {
-    // Use replace to prevent back navigation to GetStarted screen
     NavigationManager.navigateToLoginFromGetStarted();
   };
 
@@ -54,16 +52,11 @@ const GetStartedScreen = () => {
           <View className="absolute bottom-0 left-0 right-0 h-full bg-black/60 rounded-t-3xl" />
 
           <View className="px-6 pt-8 pb-12">
+            {/* Title Fade In */}
             <MotiView
-              from={{ opacity: 0, translateY: 50 }}
-              animate={{
-                opacity: isVisible ? 1 : 0,
-                translateY: isVisible ? 0 : 50,
-              }}
-              transition={{
-                opacity: { type: "timing", duration: 800, delay: 200 },
-                translateY: { type: "spring", damping: 15, delay: 200 },
-              }}
+              from={{ opacity: 0 }}
+              animate={{ opacity: isVisible ? 1 : 0 }}
+              transition={{ type: "timing", duration: 800, delay: 200 }}
               className="mb-4"
             >
               <Text className="text-4xl font-bold leading-tight text-white drop-shadow-lg">
@@ -74,16 +67,11 @@ const GetStartedScreen = () => {
               </Text>
             </MotiView>
 
+            {/* Description Fade In */}
             <MotiView
-              from={{ opacity: 0, translateY: 30 }}
-              animate={{
-                opacity: isVisible ? 1 : 0,
-                translateY: isVisible ? 0 : 30,
-              }}
-              transition={{
-                opacity: { type: "timing", duration: 800, delay: 400 },
-                translateY: { type: "spring", damping: 15, delay: 400 },
-              }}
+              from={{ opacity: 0 }}
+              animate={{ opacity: isVisible ? 1 : 0 }}
+              transition={{ type: "timing", duration: 800, delay: 400 }}
               className="mb-12"
             >
               <Text className="text-lg leading-relaxed text-white/90 drop-shadow-md">
@@ -94,16 +82,11 @@ const GetStartedScreen = () => {
               </Text>
             </MotiView>
 
+            {/* Button Fade In */}
             <MotiView
-              from={{ opacity: 0, scale: 0.9 }}
-              animate={{
-                opacity: isVisible ? 1 : 0,
-                scale: isVisible ? 1 : 0.9,
-              }}
-              transition={{
-                opacity: { type: "timing", duration: 600, delay: 600 },
-                scale: { type: "spring", damping: 12, delay: 600 },
-              }}
+              from={{ opacity: 0 }}
+              animate={{ opacity: isVisible ? 1 : 0 }}
+              transition={{ type: "timing", duration: 600, delay: 600 }}
               className="mb-6"
             >
               <TouchableOpacity
@@ -111,12 +94,13 @@ const GetStartedScreen = () => {
                 className="bg-[#9EE640] py-4 px-8 rounded-2xl shadow-lg"
                 activeOpacity={0.9}
               >
+                {/* Optional: Keep subtle pulse on button text if desired */}
                 <MotiView
                   animate={{
-                    scale: [1, 1.02, 1],
+                    opacity: [1, 0.8, 1],
                   }}
                   transition={{
-                    scale: {
+                    opacity: {
                       type: "timing",
                       duration: 2000,
                       loop: true,
@@ -130,17 +114,16 @@ const GetStartedScreen = () => {
               </TouchableOpacity>
             </MotiView>
 
+            {/* Login Link Fade In */}
             <MotiView
               from={{ opacity: 0 }}
               animate={{ opacity: isVisible ? 1 : 0 }}
-              transition={{
-                opacity: { type: "timing", duration: 600, delay: 800 },
-              }}
+              transition={{ type: "timing", duration: 600, delay: 800 }}
               className="items-center mb-5"
             >
               <TouchableOpacity onPress={handleLogin} activeOpacity={0.7}>
                 <Text className="text-base text-white/95 drop-shadow-md">
-                  Already have an account?{" "}
+                  Already have an account?{"  "}
                   <Text className="font-semibold text-white underline drop-shadow-md">
                     Login
                   </Text>
