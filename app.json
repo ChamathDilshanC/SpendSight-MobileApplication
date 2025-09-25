@@ -5,11 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/SpendSightLogo.png",
-    //"scheme": "spendsight",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chamathdilshan.spendsight",
@@ -27,6 +24,10 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ]
+    },
+    "notification": {
+      "icon": "./assets/images/SpendSightLogo.png",
+      "color": "#E6F4FE"
     },
     "web": {
       "output": "static",
