@@ -6,9 +6,9 @@ import {
   Alert,
   Dimensions,
   Image,
+  Platform,
   ScrollView,
   StatusBar,
-  Platform,
   Text,
   TouchableOpacity,
   View,
@@ -27,19 +27,26 @@ import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { useFinance } from "../../context/FinanceContext";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { useDashboardBackButton } from "../../hooks/useBackButton";
-import { AccountService } from "../../services/AccountService";
+import { AccountService, CurrencyType } from "../../services/AccountService";
 import { NavigationManager } from "../../utils/navigationManager";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
+type RequiredPreferences = {
+  currency: CurrencyType;
+  notifications: boolean;
+  darkMode: boolean;
+};
+
 const DashboardContent = () => {
-  const { authState, logout } = useAuth();
+  const { authState, logout, updateUser } = useAuth();
   const { accounts } = useFinance();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentAccountIndex, setCurrentAccountIndex] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>("USD");
   const hasLoadedImageRef = useRef<string | null>(null);
   const autoSwipeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUserInteracting = useRef(false);
@@ -141,7 +148,6 @@ const DashboardContent = () => {
     };
   }, [clearAutoSwipeTimer]);
 
-
   useEffect(() => {
     if (Platform.OS === "android") {
       StatusBar.setBarStyle("dark-content", true);
@@ -232,7 +238,7 @@ const DashboardContent = () => {
   const showBudgetPrompt = () => {
     Alert.alert(
       "Welcome to SpendSight! 🎉",
-      "Let's set up your accounts with smart budget allocation.\n\nWould you like to enter your monthly salary/budget to get started?",
+      "Let's set up your accounts with smart budget allocation.\n\nChoose your currency and set up your monthly budget:",
       [
         {
           text: "Skip for Now",
@@ -242,19 +248,30 @@ const DashboardContent = () => {
           },
         },
         {
-          text: "Set Up Budget",
+          text: "USD ($)",
           onPress: () => {
-            promptForBudgetAmount();
+            setSelectedCurrency("USD");
+            promptForBudgetAmount("USD");
+          },
+        },
+        {
+          text: "LKR (Rs.)",
+          onPress: () => {
+            setSelectedCurrency("LKR");
+            promptForBudgetAmount("LKR");
           },
         },
       ]
     );
   };
 
-  const promptForBudgetAmount = () => {
+  const promptForBudgetAmount = (currency: CurrencyType) => {
+    const currencyName = currency === "LKR" ? "Lankan Rupees" : "US Dollars";
+    const currencySymbol = AccountService.getCurrencySymbol(currency);
+
     Alert.prompt(
-      "Budget Setup",
-      "Enter your monthly salary/budget:",
+      `Budget Setup (${currency})`,
+      `Enter your monthly salary/budget in ${currencyName}:`,
       [
         {
           text: "Cancel",
@@ -264,10 +281,13 @@ const DashboardContent = () => {
           text: "Continue",
           onPress: (text: string | undefined) => {
             if (text && text.trim()) {
-              handleBudgetSetup(text.trim());
+              handleBudgetSetup(text.trim(), currency);
             } else {
               Alert.alert("Error", "Please enter a valid amount", [
-                { text: "Try Again", onPress: () => promptForBudgetAmount() },
+                {
+                  text: "Try Again",
+                  onPress: () => promptForBudgetAmount(currency),
+                },
                 { text: "Cancel", style: "cancel" },
               ]);
             }
@@ -280,7 +300,10 @@ const DashboardContent = () => {
     );
   };
 
-  const handleBudgetSetup = async (budgetInput: string) => {
+  const handleBudgetSetup = async (
+    budgetInput: string,
+    currency: CurrencyType
+  ) => {
     if (!authState?.user?.id) {
       Alert.alert("Error", "User not authenticated");
       return;
@@ -289,36 +312,59 @@ const DashboardContent = () => {
     const budget = parseFloat(budgetInput);
     if (budget <= 0 || isNaN(budget)) {
       Alert.alert("Error", "Please enter a valid budget amount", [
-        { text: "Try Again", onPress: () => promptForBudgetAmount() },
+        { text: "Try Again", onPress: () => promptForBudgetAmount(currency) },
         { text: "Cancel", style: "cancel" },
       ]);
       return;
     }
 
+    const currencySymbol = AccountService.getCurrencySymbol(currency);
+    const formattedBudget = AccountService.formatCurrency(budget, currency);
+
     Alert.alert(
       "Budget Allocation Preview",
-      `Your $${budget.toFixed(0)} will be allocated across 6 smart accounts:\n\n• Main Account (35%): $${(budget * 0.35).toFixed(0)}\n• Savings Account (20%): $${(budget * 0.2).toFixed(0)}\n• Expenses Account (25%): $${(budget * 0.25).toFixed(0)}\n• Investment Account (10%): $${(budget * 0.1).toFixed(0)}\n• Emergency Fund (5%): $${(budget * 0.05).toFixed(0)}\n• Goals & Dreams (5%): $${(budget * 0.05).toFixed(0)}\n\nProceed with this allocation?`,
+      `Your ${formattedBudget} will be allocated across 6 smart accounts:\n\n• Main Account (35%): ${AccountService.formatCurrency(budget * 0.35, currency)}\n• Savings Account (20%): ${AccountService.formatCurrency(budget * 0.2, currency)}\n• Expenses Account (25%): ${AccountService.formatCurrency(budget * 0.25, currency)}\n• Investment Account (10%): ${AccountService.formatCurrency(budget * 0.1, currency)}\n• Emergency Fund (5%): ${AccountService.formatCurrency(budget * 0.05, currency)}\n• Goals & Dreams (5%): ${AccountService.formatCurrency(budget * 0.05, currency)}\n\nProceed with this allocation?`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Create Accounts",
-          onPress: () => createAccountsWithBudget(budget),
+          onPress: () => createAccountsWithBudget(budget, currency),
         },
       ]
     );
   };
 
-  const createAccountsWithBudget = async (budget: number) => {
+  const createAccountsWithBudget = async (
+    budget: number,
+    currency: CurrencyType
+  ) => {
     try {
       setLoading(true);
+
       await AccountService.initializeAccountsWithBudget(
         authState!.user!.id,
-        budget
+        budget,
+        currency
       );
+
+      if (authState?.user) {
+        const currentPrefs = (authState.user.preferences ||
+          {}) as Partial<RequiredPreferences>;
+
+        const updatedPreferences: RequiredPreferences = {
+          currency: currency,
+          notifications: currentPrefs.notifications ?? true,
+          darkMode: currentPrefs.darkMode ?? false,
+        };
+
+        await updateUser({
+          preferences: updatedPreferences,
+        });
+      }
 
       Alert.alert(
         "Success! 🎉",
-        `Your accounts have been set up successfully!\n\n6 accounts created with smart budget allocation:\n• Main Account: $${(budget * 0.35).toFixed(0)}\n• Savings Account: $${(budget * 0.2).toFixed(0)}\n• Expenses Account: $${(budget * 0.25).toFixed(0)}\n• Investment Account: $${(budget * 0.1).toFixed(0)}\n• Emergency Fund: $${(budget * 0.05).toFixed(0)}\n• Goals & Dreams: $${(budget * 0.05).toFixed(0)}`,
+        `Your accounts have been set up successfully!\n\n6 accounts created with smart budget allocation:\n• Main Account: ${AccountService.formatCurrency(budget * 0.35, currency)}\n• Savings Account: ${AccountService.formatCurrency(budget * 0.2, currency)}\n• Expenses Account: ${AccountService.formatCurrency(budget * 0.25, currency)}\n• Investment Account: ${AccountService.formatCurrency(budget * 0.1, currency)}\n• Emergency Fund: ${AccountService.formatCurrency(budget * 0.05, currency)}\n• Goals & Dreams: ${AccountService.formatCurrency(budget * 0.05, currency)}`,
         [
           {
             text: "Get Started!",
@@ -332,7 +378,10 @@ const DashboardContent = () => {
         "Error",
         "Failed to set up your accounts. Please try again.",
         [
-          { text: "Try Again", onPress: () => promptForBudgetAmount() },
+          {
+            text: "Try Again",
+            onPress: () => promptForBudgetAmount(selectedCurrency),
+          },
           { text: "Cancel", style: "cancel" },
         ]
       );
@@ -340,7 +389,6 @@ const DashboardContent = () => {
       setLoading(false);
     }
   };
-
   const overlayAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: overlayAnim.value,

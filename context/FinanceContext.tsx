@@ -10,7 +10,6 @@ import { Account, Category, Goal, Transaction } from "../types/finance";
 import { useAuth } from "./FirebaseAuthContext";
 
 interface FinanceContextType {
-  // State
   accounts: Account[];
   transactions: Transaction[];
   categories: Category[];
@@ -18,7 +17,6 @@ interface FinanceContextType {
   isLoading: boolean;
   error: string | null;
 
-  // Account methods
   createAccount: (
     accountData: Omit<Account, "id" | "userId" | "createdAt" | "updatedAt">
   ) => Promise<string>;
@@ -26,7 +24,6 @@ interface FinanceContextType {
   getTotalBalance: () => number;
   getAccountBalance: (accountId: string) => number;
 
-  // Category methods
   createCategory: (
     categoryData: Omit<Category, "id" | "userId" | "createdAt" | "updatedAt">
   ) => Promise<string>;
@@ -34,7 +31,6 @@ interface FinanceContextType {
   getExpenseCategories: () => Category[];
   getIncomeCategories: () => Category[];
 
-  // Transaction methods
   createTransaction: (
     transactionData: Omit<
       Transaction,
@@ -45,7 +41,6 @@ interface FinanceContextType {
   getTransactionsByAccount: (accountId: string) => Transaction[];
   getTransactionsByCategory: (categoryId: string) => Transaction[];
 
-  // Goal methods
   createGoal: (
     goalData: Omit<Goal, "id" | "userId" | "createdAt" | "updatedAt">
   ) => Promise<string>;
@@ -58,7 +53,6 @@ interface FinanceContextType {
   getActiveGoals: () => Goal[];
   getCompletedGoals: () => Goal[];
 
-  // Transfer method
   transferBetweenAccounts: (
     fromAccountId: string,
     toAccountId: string,
@@ -66,12 +60,10 @@ interface FinanceContextType {
     description: string
   ) => Promise<string>;
 
-  // Analytics methods
   getMonthlyExpenses: () => number;
   getMonthlyIncome: () => number;
   getCategoryExpenses: (categoryId: string, monthsBack?: number) => number;
 
-  // Utility methods
   refreshData: () => Promise<void>;
 }
 
@@ -90,7 +82,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const { authState } = useAuth();
 
-  // State
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -98,7 +89,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Unsubscribe functions for real-time listeners
   const [unsubscribeAccounts, setUnsubscribeAccounts] = useState<
     (() => void) | null
   >(null);
@@ -106,9 +96,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     (() => void) | null
   >(null);
 
-  // Initialize data when user is authenticated
   useEffect(() => {
-    // Only initialize if user is authenticated AND auth is not loading
     if (
       authState.isAuthenticated &&
       authState.user?.id &&
@@ -119,15 +107,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       );
       initializeFinanceData();
     } else if (!authState.isAuthenticated && !authState.isLoading) {
-      // Clear data when user logs out (and auth is not loading)
       console.log("🔄 FinanceContext: User logged out, clearing data...");
       setAccounts([]);
       setTransactions([]);
       setCategories([]);
       setGoals([]);
-      setIsLoading(false); // Ensure finance context isn't loading
+      setIsLoading(false);
 
-      // Cleanup listeners
       if (unsubscribeAccounts) unsubscribeAccounts();
       if (unsubscribeTransactions) unsubscribeTransactions();
     } else if (authState.isLoading) {
@@ -135,16 +121,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     return () => {
-      // Cleanup on unmount
       if (unsubscribeAccounts) unsubscribeAccounts();
       if (unsubscribeTransactions) unsubscribeTransactions();
     };
-  }, [authState.isAuthenticated, authState.user?.id, authState.isLoading]); // Add isLoading dependency
+  }, [authState.isAuthenticated, authState.user?.id, authState.isLoading]);
 
   const initializeFinanceData = async () => {
     if (!authState.user?.id) return;
 
-    // Double-check Firebase auth state
     const currentUser = auth.currentUser;
     if (!currentUser) {
       console.log("⚠️ No current Firebase user found, waiting for auth...");
@@ -154,11 +138,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsLoading(true);
     setError(null);
 
-    // Add timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
       console.log("⏰ Loading timeout reached, setting loading to false");
       setIsLoading(false);
-    }, 15000); // 15 second timeout
+    }, 15000);
 
     try {
       const userId = authState.user.id;
@@ -171,7 +154,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         firebaseUser: currentUser.uid,
       });
 
-      // Verify that our user ID matches Firebase user ID
       if (userId !== currentUser.uid) {
         console.error("❌ User ID mismatch!", {
           userId,
@@ -180,16 +162,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("User ID mismatch");
       }
 
-      // Check if user has existing data, if not initialize defaults
       const existingAccounts = await AccountService.getUserAccounts(userId);
       if (existingAccounts.length === 0) {
-        console.log("🔧 Initializing default finance data for new user...");
-        await Promise.all([
-          CategoryService.initializeDefaultCategories(userId),
-        ]);
+        if (categories.length === 0) {
+          console.log("🔧 Initializing default finance data for new user...");
+          await Promise.all([
+            CategoryService.initializeDefaultCategories(userId),
+          ]);
+        }
       }
 
-      // Load initial data
       const [accountsData, categoriesData, goalsData, transactionsData] =
         await Promise.all([
           AccountService.getUserAccounts(userId),
@@ -203,7 +185,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       setGoals(goalsData);
       setTransactions(transactionsData);
 
-      // Set up real-time listeners
       const unsubAccounts = AccountService.subscribeToAccounts(
         userId,
         setAccounts
@@ -218,19 +199,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       setUnsubscribeTransactions(() => unsubTransactions);
 
       console.log("✅ Finance data initialized successfully");
-      clearTimeout(loadingTimeout); // Clear timeout on success
+      clearTimeout(loadingTimeout);
     } catch (err) {
       console.error("❌ Error initializing finance data:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load finance data"
       );
-      clearTimeout(loadingTimeout); // Clear timeout on error
+      clearTimeout(loadingTimeout);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Account methods
   const createAccount = async (
     accountData: Omit<Account, "id" | "userId" | "createdAt" | "updatedAt">
   ): Promise<string> => {
@@ -251,7 +231,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     return account ? account.balance : 0;
   };
 
-  // Category methods
   const createCategory = async (
     categoryData: Omit<Category, "id" | "userId" | "createdAt" | "updatedAt">
   ): Promise<string> => {
@@ -261,7 +240,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       categoryData
     );
 
-    // Refresh categories to include the new one
     const updatedCategories = await CategoryService.getUserCategories(
       authState.user.id
     );
@@ -282,7 +260,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     return categories.filter((category) => category.type === "income");
   };
 
-  // Transaction methods
   const createTransaction = async (
     transactionData: Omit<
       Transaction,
@@ -314,14 +291,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  // Goal methods
   const createGoal = async (
     goalData: Omit<Goal, "id" | "userId" | "createdAt" | "updatedAt">
   ): Promise<string> => {
     if (!authState.user?.id) throw new Error("User not authenticated");
     const goalId = await GoalService.createGoal(authState.user.id, goalData);
 
-    // Refresh goals to include the new one
     const updatedGoals = await GoalService.getUserGoals(authState.user.id);
     setGoals(updatedGoals);
 
@@ -352,7 +327,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     return goals.filter((goal) => goal.isCompleted);
   };
 
-  // Transfer method
   const transferBetweenAccounts = async (
     fromAccountId: string,
     toAccountId: string,
@@ -364,7 +338,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     return await TransactionService.createTransaction(authState.user.id, {
       type: "transfer",
       amount,
-      currency: "USD", // You might want to get this from the account
+      currency: "USD",
       description,
       fromAccountId,
       toAccountId,
@@ -373,7 +347,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  // Analytics methods
   const getMonthlyExpenses = (): number => {
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -425,7 +398,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       .reduce((total, transaction) => total + transaction.amount, 0);
   };
 
-  // Utility methods
   const refreshData = async (): Promise<void> => {
     if (authState.user?.id) {
       await initializeFinanceData();
@@ -433,7 +405,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const contextValue: FinanceContextType = {
-    // State
     accounts,
     transactions,
     categories,
@@ -441,39 +412,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
     error,
 
-    // Account methods
     createAccount,
     getAccountById,
     getTotalBalance,
     getAccountBalance,
 
-    // Category methods
     createCategory,
     getCategoryById,
     getExpenseCategories,
     getIncomeCategories,
 
-    // Transaction methods
     createTransaction,
     getRecentTransactions,
     getTransactionsByAccount,
     getTransactionsByCategory,
 
-    // Goal methods
     createGoal,
     payTowardGoal,
     getActiveGoals,
     getCompletedGoals,
 
-    // Transfer method
     transferBetweenAccounts,
 
-    // Analytics methods
     getMonthlyExpenses,
     getMonthlyIncome,
     getCategoryExpenses,
 
-    // Utility methods
     refreshData,
   };
 

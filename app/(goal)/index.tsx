@@ -23,6 +23,43 @@ import { useAuth } from "../../context/FirebaseAuthContext";
 import { GoalService } from "../../services/GoalService";
 import { Goal } from "../../types/finance";
 
+const useCurrency = () => {
+  const { authState } = useAuth();
+  const userCurrency = authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: userCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const getCurrencySymbol = (): string => {
+    try {
+      return (
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: userCurrency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })
+          .formatToParts(1)
+          .find((part) => part.type === "currency")?.value || userCurrency
+      );
+    } catch {
+      return userCurrency;
+    }
+  };
+
+  return {
+    currency: userCurrency,
+    formatCurrency,
+    getCurrencySymbol,
+  };
+};
+
 const { height: screenHeight } = Dimensions.get("window");
 
 interface NewGoal {
@@ -38,6 +75,7 @@ interface NewGoal {
 export default function GoalsScreen() {
   const { authState } = useAuth();
   const { accounts, refreshData } = useFinance();
+  const { currency, formatCurrency } = useCurrency();
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +291,7 @@ export default function GoalsScreen() {
         category: newGoal.category,
         icon: newGoal.icon,
         color: newGoal.color,
-        currency: "USD",
+        currency: currency,
         currentAmount: 0,
         isCompleted: false,
         autoPayment: {
@@ -460,13 +498,6 @@ export default function GoalsScreen() {
         },
       ]
     );
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
   };
 
   const calculateProgress = (current: number, target: number) => {

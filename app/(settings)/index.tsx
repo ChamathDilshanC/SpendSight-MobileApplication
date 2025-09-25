@@ -100,7 +100,7 @@ export default function SettingsScreen() {
 
   const handleProfileImageUpload = (imageUrl: string) => {
     setProfileImage(imageUrl);
-    // Update the user's profile image in the auth context
+
     updateUser({ profileImage: imageUrl });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -164,10 +164,10 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       <AppHeader title="Settings" />
       <ScrollView className="flex-1 bg-gray-50">
-        {/* Profile Section */}
+        {}
         <View className="px-6 py-8 bg-white">
           <View className="flex-row items-center">
-            {/* Profile Image Picker */}
+            {}
             <ProfileImagePicker
               userId={authState.user.id}
               onImageUploaded={handleProfileImageUpload}
@@ -191,14 +191,14 @@ export default function SettingsScreen() {
                   </View>
                 )}
 
-                {/* Camera Icon */}
+                {}
                 <View className="absolute bottom-0 right-0 p-1 bg-white border-2 border-gray-100 rounded-full">
                   <Ionicons name="camera" size={14} color="#6B7280" />
                 </View>
               </View>
             </ProfileImagePicker>
 
-            {/* User Info */}
+            {}
             <View className="flex-1 ml-4">
               <Text className="text-xl font-bold text-gray-900">
                 {authState.user.fullName || "User Name"}
@@ -209,13 +209,13 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Profile Photo Instructions */}
+          {}
           <Text className="mt-4 text-sm text-center text-gray-500">
             Tap profile photo to change
           </Text>
         </View>
 
-        {/* Account Settings */}
+        {}
         <View className="mt-6">
           <Text className="px-6 py-2 text-sm font-medium tracking-wide text-gray-500 uppercase">
             Account
@@ -270,11 +270,11 @@ export default function SettingsScreen() {
           />
 
           <SettingItem
-            icon="download-outline"
-            title="Data Export"
-            subtitle="Export your financial data"
+            icon="cash-outline"
+            title="Change Currency"
+            subtitle="Change your default currency"
             onPress={() => {
-              Alert.alert("Coming Soon", "Data export feature coming soon!");
+              router.push("/(settings)/currency-selector");
             }}
           />
         </View>
@@ -307,7 +307,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Sign Out */}
+        {}
         <View className="mt-6 mb-8">
           <SettingItem
             icon="log-out-outline"

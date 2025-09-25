@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { useFinance } from "../context/FinanceContext";
+import { useAuth } from "../context/FirebaseAuthContext";
+import { AccountService, CurrencyType } from "../services/AccountService";
 import { Transaction } from "../types/finance";
 
 interface TransactionListProps {
@@ -31,21 +33,31 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     getAccountById,
   } = useFinance();
 
+  const { authState } = useAuth();
+
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return AccountService.formatCurrency(amount, userCurrency);
+  };
+
+  const getCurrencySymbol = (): string => {
+    return AccountService.getCurrencySymbol(userCurrency);
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<
     "all" | "expense" | "income" | "transfer" | "goal_payment"
   >("all");
 
-  // Filter and search transactions
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
-    // Filter by type
     if (filterType !== "all") {
       filtered = filtered.filter((t) => t.type === filterType);
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((t) => {
@@ -90,7 +102,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       case "transfer":
         return "#3b82f6";
       case "goal_payment":
-        return "#8b5cf6"; // Purple color for goals
+        return "#8b5cf6";
       default:
         return "#6b7280";
     }
@@ -103,7 +115,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         : type === "income"
           ? "+"
           : "";
-    return `${prefix}$${amount.toFixed(2)}`;
+
+    const formattedAmount = formatCurrency(Math.abs(amount));
+
+    if (formattedAmount.startsWith("+") || formattedAmount.startsWith("-")) {
+      return formattedAmount;
+    }
+
+    return `${prefix}${formattedAmount}`;
   };
 
   const getTransactionSubtitle = (transaction: Transaction): string => {
@@ -220,9 +239,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Search and Filters - Moved outside FlatList */}
+      {}
       <View className="px-4 mb-4">
-        {/* Search Bar */}
+        {}
         <View className="flex-row items-center px-4 py-3 mt-5 mb-4 bg-white shadow-sm rounded-xl">
           <Ionicons name="search" size={20} color="#9ca3af" />
           <TextInput
@@ -239,7 +258,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           )}
         </View>
 
-        {/* Filter Buttons */}
+        {}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -255,7 +274,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </View>
         </ScrollView>
 
-        {/* Results Count */}
+        {}
         <View className="mb-2">
           <Text className="text-sm font-medium text-gray-500">
             {filteredTransactions.length} transaction
@@ -264,7 +283,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         </View>
       </View>
 
-      {/* Transaction List */}
+      {}
       <FlatList
         data={filteredTransactions}
         renderItem={renderTransaction}

@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { useFinance } from "../context/FinanceContext";
+import { useAuth } from "../context/FirebaseAuthContext";
+import { AccountService, CurrencyType } from "../services/AccountService";
 import { Account, Category, Transaction } from "../types/finance";
 
 interface TransactionFormProps {
@@ -19,6 +21,26 @@ interface TransactionFormProps {
   onCancel: () => void;
   isEditing?: boolean;
 }
+
+const useCurrency = () => {
+  const { authState } = useAuth();
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return AccountService.formatCurrency(amount, userCurrency);
+  };
+
+  const getCurrencySymbol = (): string => {
+    return AccountService.getCurrencySymbol(userCurrency);
+  };
+
+  return {
+    currency: userCurrency,
+    formatCurrency,
+    getCurrencySymbol,
+  };
+};
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   transaction,
@@ -34,7 +56,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     getIncomeCategories,
   } = useFinance();
 
-  // Form state
+  const { currency, formatCurrency, getCurrencySymbol } = useCurrency();
+
   const [type, setType] = useState<
     "expense" | "income" | "transfer" | "goal_payment"
   >(transaction?.type || "expense");
@@ -58,7 +81,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  // Filtered categories based on transaction type
   const [availableCategories, setAvailableCategories] = useState<Category[]>(
     []
   );
@@ -70,11 +92,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setAvailableCategories(getIncomeCategories());
     } else {
       setAvailableCategories([]);
-      setSelectedCategory(""); // Clear category for transfers and goal payments
+      setSelectedCategory("");
     }
   }, [type, categories]);
 
-  // Reset form fields when transaction type changes
   useEffect(() => {
     if (!isEditing) {
       setSelectedCategory("");
@@ -126,17 +147,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         return false;
       }
     } else if (type === "goal_payment") {
-      // Goal payments require either fromAccount (withdrawal) or toAccount (deposit)
       if (!fromAccount && !toAccount) {
         Alert.alert("Error", "Please select an account");
         return false;
       }
-      // Goal payments can't have both accounts selected
+
       if (fromAccount && toAccount) {
         Alert.alert("Error", "Goal payments can only use one account");
         return false;
       }
-      // Goal payments require a goal to be selected
+
       if (!selectedGoal) {
         Alert.alert("Error", "Please select a goal");
         return false;
@@ -154,7 +174,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       const transactionData: any = {
         type,
         amount: parseFloat(amount),
-        currency: "USD", // You might want to make this configurable
+        currency: currency,
         description: description.trim(),
         date,
         tags: tags
@@ -164,7 +184,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         isRecurring,
       };
 
-      // Only add fields that have values to avoid undefined values in Firebase
       if (type !== "transfer" && type !== "goal_payment" && selectedCategory) {
         transactionData.categoryId = selectedCategory;
       }
@@ -187,7 +206,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         transactionData.toAccountId = toAccount;
       }
 
-      // Add goal ID for goal payments
       if (type === "goal_payment" && selectedGoal) {
         transactionData.goalId = selectedGoal;
       }
@@ -201,7 +219,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
-  const formatCurrency = (value: string): string => {
+  const formatCurrencyInput = (value: string): string => {
     const numericValue = value.replace(/[^0-9.]/g, "");
     const parts = numericValue.split(".");
     if (parts.length > 2) {
@@ -215,6 +233,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return account ? account.name : "Select Account";
   };
 
+  const getAccountDisplayText = (account: Account): string => {
+    return `${account.name} (${formatCurrency(account.balance)})`;
+  };
+
   const getCategoryName = (categoryId: string): string => {
     const category = availableCategories.find((cat) => cat.id === categoryId);
     return category ? category.name : "Select Category";
@@ -225,13 +247,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return goal ? goal.name : "Select Goal";
   };
 
+  const getGoalDisplayText = (goal: any): string => {
+    return `${formatCurrency(goal.currentAmount)} / ${formatCurrency(goal.targetAmount)}`;
+  };
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-gray-50"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
-        {/* Transaction Type Selector */}
+        {}
         <View className="mb-6">
           <Text className="mb-2 text-base font-semibold text-gray-800">
             Transaction Type
@@ -321,17 +347,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         </View>
 
-        {/* Amount Input */}
+        {}
         <View className="mb-6">
           <Text className="mb-2 text-base font-semibold text-gray-800">
             Amount
           </Text>
           <View className="flex-row items-center px-4 bg-white shadow-sm rounded-xl">
-            <Text className="mr-2 text-2xl font-semibold text-blue-600">$</Text>
+            <Text className="mr-2 text-2xl font-semibold text-blue-600">
+              {getCurrencySymbol()}
+            </Text>
             <TextInput
               className="flex-1 py-4 text-2xl font-semibold text-gray-800"
               value={amount}
-              onChangeText={(text) => setAmount(formatCurrency(text))}
+              onChangeText={(text) => setAmount(formatCurrencyInput(text))}
               keyboardType="decimal-pad"
               placeholder="0.00"
               placeholderTextColor="#9ca3af"
@@ -339,7 +367,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         </View>
 
-        {/* Description Input */}
+        {}
         <View className="mb-6">
           <Text className="mb-2 text-base font-semibold text-gray-800">
             Description
@@ -356,7 +384,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           />
         </View>
 
-        {/* Category Picker (for income/expense only) */}
+        {}
         {type !== "transfer" && type !== "goal_payment" && (
           <View className="mb-6">
             <Text className="mb-2 text-base font-semibold text-gray-800">
@@ -397,7 +425,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         )}
 
-        {/* Goal Picker (for goal_payment only) */}
+        {}
         {type === "goal_payment" && (
           <View className="mb-6">
             <Text className="mb-2 text-base font-semibold text-gray-800">
@@ -439,8 +467,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                             {goal.name}
                           </Text>
                           <Text className="mt-1 text-sm text-gray-500">
-                            ${goal.currentAmount.toFixed(2)} / $
-                            {goal.targetAmount.toFixed(2)}
+                            {getGoalDisplayText(goal)}
                           </Text>
                           <View className="h-2 mt-2 bg-gray-200 rounded-full">
                             <View
@@ -482,7 +509,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         )}
 
-        {/* Account Selectors */}
+        {}
         {(type === "expense" ||
           type === "transfer" ||
           (type === "goal_payment" && !toAccount)) && (
@@ -520,7 +547,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                           : "text-gray-800"
                       }`}
                     >
-                      {account.name} (${account.balance.toFixed(2)})
+                      {getAccountDisplayText(account)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -566,7 +593,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                           : "text-gray-800"
                       }`}
                     >
-                      {account.name} (${account.balance.toFixed(2)})
+                      {getAccountDisplayText(account)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -575,7 +602,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         )}
 
-        {/* Date Picker */}
+        {}
         <View className="mb-6">
           <Text className="mb-2 text-base font-semibold text-gray-800">
             Date
@@ -591,7 +618,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Tags Input */}
+        {}
         <View className="mb-6">
           <Text className="mb-2 text-base font-semibold text-gray-800">
             Tags (optional)
@@ -605,7 +632,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           />
         </View>
 
-        {/* Recurring Toggle */}
+        {}
         <View className="mb-6">
           <TouchableOpacity
             className="px-4 py-4 bg-white shadow-sm rounded-xl"
@@ -630,7 +657,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Action Buttons */}
+        {}
         <View className="flex-row justify-between mt-8 mb-4">
           <TouchableOpacity
             className="items-center flex-1 py-4 mr-2 bg-gray-100 rounded-xl"
@@ -656,7 +683,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </View>
       </ScrollView>
 
-      {/* Date Picker Modal removed - using simple date display for now */}
+      {}
     </KeyboardAvoidingView>
   );
 };

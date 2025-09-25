@@ -1,3 +1,5 @@
+import { CurrencyType } from "../services/AccountService";
+
 export interface User {
   id: string;
   fullName: string;
@@ -8,19 +10,18 @@ export interface User {
   isActive: boolean;
   authProvider?: "email" | "google" | "apple";
   preferences?: {
-    currency: string;
+    currency: CurrencyType;
     notifications: boolean;
     darkMode: boolean;
   };
 }
-
 export interface UserRegistrationData {
   fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
+  currency?: "USD" | "LKR";
 }
-
 export interface UserLoginData {
   email: string;
   password: string;

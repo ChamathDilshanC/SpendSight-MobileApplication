@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useFinance } from "../context/FinanceContext";
+import { useAuth } from "../context/FirebaseAuthContext";
+import { AccountService, CurrencyType } from "../services/AccountService";
 import { TransactionService } from "../services/TransactionService";
 import { Transaction } from "../types/finance";
 
@@ -12,6 +14,26 @@ interface TransactionDetailsProps {
   onBack: () => void;
 }
 
+const useCurrency = () => {
+  const { authState } = useAuth();
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return AccountService.formatCurrency(amount, userCurrency);
+  };
+
+  const getCurrencySymbol = (): string => {
+    return AccountService.getCurrencySymbol(userCurrency);
+  };
+
+  return {
+    currency: userCurrency,
+    formatCurrency,
+    getCurrencySymbol,
+  };
+};
+
 export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   transaction,
   onEdit,
@@ -19,6 +41,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   onBack,
 }) => {
   const { getCategoryById, getAccountById } = useFinance();
+  const { formatCurrency, getCurrencySymbol } = useCurrency();
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -53,13 +76,21 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
   };
 
   const formatAmount = (amount: number, type: Transaction["type"]): string => {
+    const formattedAmount = formatCurrency(amount);
     const prefix =
       type === "expense" || type === "goal_payment"
         ? "-"
         : type === "income"
           ? "+"
           : "";
-    return `${prefix}$${amount.toFixed(2)}`;
+
+    if (prefix) {
+      const symbol = getCurrencySymbol();
+      const numericPart = formattedAmount.replace(symbol, "").trim();
+      return `${prefix}${symbol}${numericPart}`;
+    }
+
+    return formattedAmount;
   };
 
   const handleDelete = async () => {
@@ -116,7 +147,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      {/* Header */}
+      {}
       <View className="flex-row items-center justify-between px-4 py-4 bg-white border-b border-gray-200">
         <TouchableOpacity className="p-2" onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#3b82f6" />
@@ -127,7 +158,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         <View className="w-10" />
       </View>
 
-      {/* Transaction Summary */}
+      {}
       <View className="items-center p-6 m-4 bg-white shadow-sm rounded-2xl">
         <View
           className="items-center justify-center w-16 h-16 mb-4 rounded-full"
@@ -158,7 +189,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </Text>
       </View>
 
-      {/* Transaction Details */}
+      {}
       <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
         <Text className="mb-3 text-base font-semibold text-gray-900">
           Details
@@ -175,7 +206,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
           "calendar"
         )}
 
-        {renderDetailRow("Amount", `$${transaction.amount.toFixed(2)}`, "cash")}
+        {renderDetailRow("Amount", formatCurrency(transaction.amount), "cash")}
 
         {renderDetailRow("Currency", transaction.currency, "card")}
 
@@ -222,7 +253,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         {transaction.goalId && renderDetailRow("Goal Payment", "Yes", "flag")}
       </View>
 
-      {/* Metadata */}
+      {}
       <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
         <Text className="mb-3 text-base font-semibold text-gray-900">
           Metadata
@@ -259,7 +290,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         )}
       </View>
 
-      {/* Action Buttons */}
+      {}
       <View className="mx-4 mb-4">
         <TouchableOpacity
           className="flex-row items-center justify-center bg-blue-500 py-3.5 rounded-xl mb-3"
@@ -287,7 +318,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Location Information (if available) */}
+      {}
       {transaction.location && (
         <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
           <Text className="mb-3 text-base font-semibold text-gray-900">
@@ -309,7 +340,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
         </View>
       )}
 
-      {/* Attachments (if available) */}
+      {}
       {transaction.attachments && transaction.attachments.length > 0 && (
         <View className="p-4 mx-4 mb-4 bg-white shadow-sm rounded-xl">
           <Text className="mb-3 text-base font-semibold text-gray-900">

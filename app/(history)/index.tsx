@@ -14,6 +14,8 @@ import { BarChart, PieChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useFinance } from "../../context/FinanceContext";
+import { useAuth } from "../../context/FirebaseAuthContext";
+import { AccountService, CurrencyType } from "../../services/AccountService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -38,6 +40,11 @@ type TimeFilter = "week" | "month" | "3months" | "year";
 
 export default function HistoryScreen() {
   const { transactions, categories, refreshData } = useFinance();
+  const { authState } = useAuth();
+
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -58,7 +65,6 @@ export default function HistoryScreen() {
     }
   };
 
-  // Filter transactions based on selected time period
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     const startDate = new Date();
@@ -84,7 +90,6 @@ export default function HistoryScreen() {
     });
   }, [transactions, timeFilter]);
 
-  // Calculate summary statistics
   const analytics = useMemo(() => {
     const totalIncome = filteredTransactions
       .filter((t) => t.type === "income")
@@ -96,7 +101,6 @@ export default function HistoryScreen() {
 
     const netAmount = totalIncome - totalExpense;
 
-    // Category-wise expenses for pie chart
     const categoryExpenses = filteredTransactions
       .filter((t) => t.type === "expense")
       .reduce(
@@ -110,7 +114,6 @@ export default function HistoryScreen() {
         {} as Record<string, number>
       );
 
-    // Monthly data for bar chart (last 6 months/periods)
     const periods = [];
     const periodIncome = [];
     const periodExpense = [];
@@ -159,16 +162,12 @@ export default function HistoryScreen() {
   }, [filteredTransactions, categories, transactions, timeFilter]);
 
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+    return AccountService.formatCurrency(amount, userCurrency);
   };
 
-  // Prepare pie chart data
   const pieChartData = Object.entries(analytics.categoryExpenses)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 6) // Top 6 categories
+    .slice(0, 6)
     .map(([name, amount], index) => ({
       name,
       amount,
@@ -179,7 +178,6 @@ export default function HistoryScreen() {
       legendFontSize: 12,
     }));
 
-  // Prepare bar chart data
   const barChartData = {
     labels: analytics.periods,
     datasets: [
@@ -217,7 +215,7 @@ export default function HistoryScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: 16 }}
         >
-          {/* Time Filter */}
+          {}
           <View className="mb-6">
             <ScrollView
               horizontal
@@ -261,13 +259,13 @@ export default function HistoryScreen() {
             </ScrollView>
           </View>
 
-          {/* Summary Cards */}
+          {}
           <View className="mb-8">
             <Text className="mb-4 text-xl font-bold text-gray-900">
               Financial Overview
             </Text>
             <View className="gap-4">
-              {/* Total Income Card */}
+              {}
               <View
                 className="p-4 bg-white rounded-2xl"
                 style={{
@@ -302,7 +300,7 @@ export default function HistoryScreen() {
                 </View>
               </View>
 
-              {/* Total Expense Card */}
+              {}
               <View
                 className="p-4 bg-white rounded-2xl"
                 style={{
@@ -337,7 +335,7 @@ export default function HistoryScreen() {
                 </View>
               </View>
 
-              {/* Net Amount Card */}
+              {}
               <View
                 className="p-4 bg-white rounded-2xl"
                 style={{
@@ -387,7 +385,7 @@ export default function HistoryScreen() {
             </View>
           </View>
 
-          {/* Bar Chart - Income vs Expenses */}
+          {}
           {barChartData.datasets[0].data.some((val) => val > 0) ||
           barChartData.datasets[1].data.some((val) => val > 0) ? (
             <View className="mb-8">
@@ -408,7 +406,7 @@ export default function HistoryScreen() {
                   data={barChartData}
                   width={screenWidth - 64}
                   height={220}
-                  yAxisLabel="$"
+                  yAxisLabel=""
                   yAxisSuffix=""
                   chartConfig={{
                     ...chartConfig,
@@ -422,6 +420,8 @@ export default function HistoryScreen() {
                   }}
                   showValuesOnTopOfBars
                   fromZero
+                  withHorizontalLabels={true}
+                  withInnerLines={true}
                 />
                 <View className="flex-row justify-center gap-6 mt-4">
                   <View className="flex-row items-center">
@@ -447,7 +447,7 @@ export default function HistoryScreen() {
             </View>
           ) : null}
 
-          {/* Pie Chart - Expense Categories */}
+          {}
           {pieChartData.length > 0 ? (
             <View className="mb-8">
               <Text className="mb-4 text-xl font-bold text-gray-900">
@@ -475,12 +475,13 @@ export default function HistoryScreen() {
                     marginVertical: 8,
                     borderRadius: 16,
                   }}
+                  absolute
                 />
               </View>
             </View>
           ) : null}
 
-          {/* Empty State */}
+          {}
           {filteredTransactions.length === 0 && (
             <View className="items-center py-12">
               <View className="items-center justify-center w-20 h-20 mb-4 bg-gray-100 rounded-full">

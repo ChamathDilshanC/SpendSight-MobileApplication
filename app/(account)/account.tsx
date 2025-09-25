@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/AppHeader";
 import { useAuth } from "../../context/FirebaseAuthContext";
-import { AccountService } from "../../services/AccountService";
+import { AccountService, CurrencyType } from "../../services/AccountService";
 import { Account } from "../../types/finance";
 
 interface NewAccountForm {
@@ -29,15 +29,35 @@ interface NewAccountForm {
   icon: string;
 }
 
+const useCurrency = () => {
+  const { authState } = useAuth();
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return AccountService.formatCurrency(amount, userCurrency);
+  };
+
+  const getCurrencySymbol = (): string => {
+    return AccountService.getCurrencySymbol(userCurrency);
+  };
+
+  return {
+    currency: userCurrency,
+    formatCurrency,
+    getCurrencySymbol,
+  };
+};
+
 const AccountScreen = () => {
   const { authState } = useAuth();
+  const { currency, formatCurrency } = useCurrency();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [transferForm, setTransferForm] = useState({
     fromAccountId: "",
@@ -176,10 +196,6 @@ const AccountScreen = () => {
         authState.user.id
       );
       setAccounts(userAccounts);
-
-      if (userAccounts.length === 0) {
-        setShowBudgetModal(true);
-      }
     } catch (error) {
       console.error("Error loading accounts:", error);
       Alert.alert("Error", "Failed to load accounts. Please try again.");
@@ -206,15 +222,15 @@ const AccountScreen = () => {
 
       await AccountService.initializeAccountsWithBudget(
         authState.user.id,
-        budget
+        budget,
+        currency
       );
 
-      setShowBudgetModal(false);
       setMonthlyBudget("");
 
       Alert.alert(
         "Success!",
-        `Your accounts have been set up with budget allocation:\n\n• Main Account (50%): $${(budget * 0.5).toFixed(2)}\n• Savings Account (30%): $${(budget * 0.3).toFixed(2)}\n• Expenses Account (20%): $${(budget * 0.2).toFixed(2)}`,
+        `Your accounts have been set up with budget allocation:\n\n• Main Account (50%): ${formatCurrency(budget * 0.5)}\n• Savings Account (30%): ${formatCurrency(budget * 0.3)}\n• Expenses Account (20%): ${formatCurrency(budget * 0.2)}`,
         [{ text: "OK" }]
       );
     } catch (error) {
@@ -279,7 +295,7 @@ const AccountScreen = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         "Transfer Successful",
-        `$${amount.toFixed(2)} has been transferred from ${fromAccountName} to ${toAccountName}`
+        `${formatCurrency(amount)} has been transferred from ${fromAccountName} to ${toAccountName}`
       );
     } catch (error) {
       console.error("Error transferring funds:", error);
@@ -317,7 +333,7 @@ const AccountScreen = () => {
         balance,
         description: newAccount.description.trim(),
         isActive: true,
-        currency: "USD",
+        currency: currency,
         color: newAccount.color,
         icon: newAccount.icon,
       };
@@ -444,13 +460,6 @@ const AccountScreen = () => {
 
   const getAccountTypeInfo = (type: string) => {
     return accountTypes.find((t) => t.value === type) || accountTypes[0];
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
   };
 
   const calculateTotalBalance = () => {
@@ -769,7 +778,7 @@ const AccountScreen = () => {
                       {formatCurrency(Math.abs(account.balance))}
                     </Text>
                     <Text className="text-xs font-medium text-gray-400">
-                      {account.currency || "USD"}
+                      {currency}
                     </Text>
                   </View>
                 </View>
@@ -805,7 +814,7 @@ const AccountScreen = () => {
         <View className="h-10" />
       </ScrollView>
 
-      {/* Add/Edit Account Modal */}
+      {}
       <Modal
         visible={showAddModal}
         transparent={true}
@@ -832,7 +841,7 @@ const AccountScreen = () => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Account Name */}
+              {}
               <View className="mb-4">
                 <Text className="mb-2 text-base font-semibold text-gray-700">
                   Account Name
@@ -848,7 +857,7 @@ const AccountScreen = () => {
                 />
               </View>
 
-              {/* Account Type */}
+              {}
               <View className="mb-4">
                 <Text className="mb-2 text-base font-semibold text-gray-700">
                   Account Type
@@ -889,7 +898,7 @@ const AccountScreen = () => {
                 </View>
               </View>
 
-              {/* Initial Balance */}
+              {}
               {!editingAccount && (
                 <View className="mb-4">
                   <Text className="mb-2 text-base font-semibold text-gray-700">
@@ -908,7 +917,7 @@ const AccountScreen = () => {
                 </View>
               )}
 
-              {/* Description */}
+              {}
               <View className="mb-4">
                 <Text className="mb-2 text-base font-semibold text-gray-700">
                   Description (Optional)
@@ -926,7 +935,7 @@ const AccountScreen = () => {
                 />
               </View>
 
-              {/* Color Picker */}
+              {}
               <View className="mb-4">
                 <Text className="mb-2 text-base font-semibold text-gray-700">
                   Choose Color
@@ -947,7 +956,7 @@ const AccountScreen = () => {
                 </View>
               </View>
 
-              {/* Icon Picker */}
+              {}
               <View className="mb-6">
                 <Text className="mb-2 text-base font-semibold text-gray-700">
                   Choose Icon
@@ -973,7 +982,7 @@ const AccountScreen = () => {
                 </View>
               </View>
 
-              {/* Action Buttons */}
+              {}
               <View className="flex-row gap-3 pt-4">
                 <TouchableOpacity
                   onPress={() => setShowAddModal(false)}
@@ -1000,7 +1009,7 @@ const AccountScreen = () => {
         </View>
       </Modal>
 
-      {/* Transfer Modal */}
+      {}
       <Modal
         visible={showTransferModal}
         transparent={true}
@@ -1025,7 +1034,7 @@ const AccountScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* From Account */}
+            {}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 From Account
@@ -1059,7 +1068,7 @@ const AccountScreen = () => {
               </ScrollView>
             </View>
 
-            {/* To Account */}
+            {}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 To Account
@@ -1097,7 +1106,7 @@ const AccountScreen = () => {
               </ScrollView>
             </View>
 
-            {/* Amount */}
+            {}
             <View className="mb-4">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Transfer Amount
@@ -1114,7 +1123,7 @@ const AccountScreen = () => {
               />
             </View>
 
-            {/* Description */}
+            {}
             <View className="mb-6">
               <Text className="mb-2 text-base font-semibold text-gray-700">
                 Description (Optional)
@@ -1130,7 +1139,7 @@ const AccountScreen = () => {
               />
             </View>
 
-            {/* Action Buttons */}
+            {}
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setShowTransferModal(false)}
@@ -1154,87 +1163,7 @@ const AccountScreen = () => {
         </View>
       </Modal>
 
-      {/* Budget Setup Modal */}
-      <Modal
-        visible={showBudgetModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowBudgetModal(false)}
-      >
-        <View className="justify-center flex-1 px-4 bg-black/50">
-          <MotiView
-            from={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="p-6 bg-white rounded-3xl"
-          >
-            <View className="items-center mb-6">
-              <View
-                className="items-center justify-center w-20 h-20 mb-4 rounded-full"
-                style={{ backgroundColor: "#6366F1" }}
-              >
-                <Ionicons name="wallet-outline" size={40} color="white" />
-              </View>
-              <Text className="text-2xl font-bold text-center text-gray-900">
-                Set Up Your Budget
-              </Text>
-              <Text className="mt-2 text-center text-gray-600">
-                Enter your monthly budget to automatically create accounts
-              </Text>
-            </View>
-
-            <View className="mb-6">
-              <Text className="mb-2 text-base font-semibold text-gray-700">
-                Monthly Budget/Salary
-              </Text>
-              <TextInput
-                value={monthlyBudget}
-                onChangeText={setMonthlyBudget}
-                placeholder="Enter your monthly budget"
-                keyboardType="numeric"
-                className="p-4 text-base border border-gray-200 rounded-xl"
-                style={{ backgroundColor: "#f9fafb" }}
-              />
-            </View>
-
-            <View className="p-4 mb-6 bg-blue-50 rounded-xl">
-              <Text className="mb-2 text-sm font-semibold text-blue-700">
-                Account Allocation:
-              </Text>
-              <Text className="text-sm text-blue-600">
-                • Main Account: 50% (Daily expenses)
-              </Text>
-              <Text className="text-sm text-blue-600">
-                • Savings Account: 30% (Future goals)
-              </Text>
-              <Text className="text-sm text-blue-600">
-                • Expenses Account: 20% (Bills & utilities)
-              </Text>
-            </View>
-
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setShowBudgetModal(false)}
-                className="flex-1 px-6 py-4 bg-gray-100 rounded-xl"
-              >
-                <Text className="text-base font-semibold text-center text-gray-700">
-                  Skip for Now
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleBudgetSetup}
-                className="flex-1 px-6 py-4 rounded-xl"
-                style={{ backgroundColor: "#6366F1" }}
-              >
-                <Text className="text-base font-semibold text-center text-white">
-                  Create Accounts
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </MotiView>
-        </View>
-      </Modal>
-
-      {/* Floating Action Button */}
+      {}
       <MotiView
         from={{ scale: 0, rotate: "180deg" }}
         animate={{ scale: 1, rotate: "0deg" }}

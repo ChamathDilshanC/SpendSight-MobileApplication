@@ -10,6 +10,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { useAuth } from "../context/FirebaseAuthContext";
+import { AccountService, CurrencyType } from "../services/AccountService";
 import { Account } from "../types/finance";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -32,22 +34,41 @@ interface AnimatedAccountCardProps {
   onSwipe: (newIndex: number) => void;
 }
 
+const useCurrency = () => {
+  const { authState } = useAuth();
+  const userCurrency: CurrencyType =
+    authState?.user?.preferences?.currency || "USD";
+
+  const formatCurrency = (amount: number): string => {
+    return AccountService.formatCurrency(amount, userCurrency);
+  };
+
+  const getCurrencySymbol = (): string => {
+    return AccountService.getCurrencySymbol(userCurrency);
+  };
+
+  return {
+    currency: userCurrency,
+    formatCurrency,
+    getCurrencySymbol,
+  };
+};
+
 export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
   accounts,
   currentIndex,
   onSwipe,
 }) => {
+  const { formatCurrency, currency } = useCurrency();
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
-
 
   useEffect(() => {
     translateX.value = withSpring(0, FAST_SPRING_CONFIG);
     scale.value = withSpring(1, FAST_SPRING_CONFIG);
     opacity.value = withTiming(1, { duration: 150 });
   }, [currentIndex]);
-
 
   const handleManualSwipe = useCallback(
     (direction: "left" | "right") => {
@@ -72,7 +93,6 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
     [currentIndex, accounts, onSwipe]
   );
 
-
   const panGesture = Gesture.Pan()
     .onStart(() => {
       "worklet";
@@ -86,7 +106,6 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
       if (!accounts || accounts.length === 0) return;
 
       translateX.value = event.translationX;
-
 
       if (currentIndex === 0 && event.translationX > 0) {
         translateX.value = event.translationX * 0.3;
@@ -138,7 +157,6 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
     })
     .onFinalize(() => {
       "worklet";
-
       scale.value = withSpring(1, {
         damping: 15,
         stiffness: 200,
@@ -151,10 +169,6 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
       opacity: opacity.value,
     };
   });
-
-  const formatCurrency = (amount: number): string => {
-    return `$${amount.toFixed(2)}`;
-  };
 
   const getAccountIcon = (account: Account): string => {
     if (account?.icon) {
@@ -190,6 +204,20 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
     }
   };
 
+  const getAccountTypeDisplay = (type: string): string => {
+    switch (type) {
+      case "main":
+        return "Main";
+      case "savings":
+        return "Savings";
+      case "expenses":
+        return "Expenses";
+      case "custom":
+        return "Custom";
+      default:
+        return "Unknown";
+    }
+  };
 
   if (!accounts || accounts.length === 0) {
     return (
@@ -290,10 +318,7 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
                       {currentAccount.name || "Unnamed Account"}
                     </Text>
                     <Text className="text-sm text-white opacity-80">
-                      {currentAccount.type
-                        ? currentAccount.type.charAt(0).toUpperCase() +
-                          currentAccount.type.slice(1)
-                        : "Unknown"}{" "}
+                      {getAccountTypeDisplay(currentAccount.type || "custom")}{" "}
                       Account
                     </Text>
                   </MotiView>
@@ -354,8 +379,7 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
                     Account Type
                   </Text>
                   <Text className="text-sm font-medium text-white">
-                    {currentAccount.type?.charAt(0).toUpperCase() +
-                      (currentAccount.type?.slice(1) || "")}
+                    {getAccountTypeDisplay(currentAccount.type || "custom")}
                   </Text>
                 </View>
                 <View>
@@ -363,7 +387,7 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
                     Currency
                   </Text>
                   <Text className="text-sm font-medium text-white">
-                    {currentAccount.currency || "USD"}
+                    {currency}
                   </Text>
                 </View>
               </View>
@@ -383,7 +407,9 @@ export const AnimatedAccountCard: React.FC<AnimatedAccountCardProps> = ({
             >
               <View className="flex-row items-center">
                 <View
-                  className={`w-2 h-2 rounded-full ${currentAccount.isActive ? "bg-green-300" : "bg-red-300"}`}
+                  className={`w-2 h-2 rounded-full ${
+                    currentAccount.isActive ? "bg-green-300" : "bg-red-300"
+                  }`}
                 />
                 <Text className="ml-2 text-sm text-white opacity-80">
                   {currentAccount.isActive ? "Active" : "Inactive"}
