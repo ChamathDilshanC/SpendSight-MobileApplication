@@ -27,6 +27,7 @@ interface AppHeaderProps {
   rightComponent?: React.ReactNode;
   backgroundColor?: string;
   textColor?: string;
+  statusBarStyle?: "default" | "light-content" | "dark-content";
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -36,12 +37,26 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   rightComponent,
   backgroundColor = "#ffffff",
   textColor = "#1f2937",
+  statusBarStyle,
 }) => {
   const insets = useSafeAreaInsets();
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
+
+  // Determine status bar style automatically if not provided
+  const determineStatusBarStyle = () => {
+    if (statusBarStyle) return statusBarStyle;
+
+    // Check if background is dark
+    const isDark =
+      backgroundColor === "#1a1a1a" ||
+      backgroundColor === "#000000" ||
+      backgroundColor.toLowerCase().includes("dark");
+
+    return isDark ? "light-content" : "dark-content";
+  };
 
   const overlayAnimatedStyle = useAnimatedStyle(() => ({
     opacity: overlayAnim.value,
@@ -90,7 +105,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       easing: Easing.in(Easing.ease),
     });
 
-
     setTimeout(() => {
       setIsDrawerVisible(false);
     }, 300);
@@ -113,19 +127,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         className="border-b border-gray-200 shadow-sm"
         style={{
           backgroundColor,
-          paddingTop: insets.top + 8,
+          paddingTop: 15,
           paddingBottom: 12,
         }}
       >
         <StatusBar
-          barStyle={
-            backgroundColor === "#ffffff" ? "dark-content" : "light-content"
-          }
+          barStyle={determineStatusBarStyle()}
           backgroundColor={backgroundColor}
+          translucent={false}
         />
 
         <View className="flex-row items-center justify-between px-4">
-          {}
+          {/* Left button */}
           <View className="w-10">
             <TouchableOpacity
               className="p-2 -ml-2 rounded-lg active:bg-gray-100"
@@ -141,7 +154,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </TouchableOpacity>
           </View>
 
-          {}
+          {/* Title */}
           <View className="flex-1 mx-4">
             <Text
               className="text-lg font-semibold text-center"
@@ -153,14 +166,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </Text>
           </View>
 
-          {}
+          {/* Right component */}
           <View className="items-end justify-center w-10">
             {rightComponent}
           </View>
         </View>
       </View>
 
-      {}
+      {/* Navigation Drawer */}
       <NavigationDrawer
         isVisible={isDrawerVisible}
         onClose={closeDrawer}

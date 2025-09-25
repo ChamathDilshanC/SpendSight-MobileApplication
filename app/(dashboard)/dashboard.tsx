@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   StatusBar,
+  Platform,
   Text,
   TouchableOpacity,
   View,
@@ -139,6 +140,16 @@ const DashboardContent = () => {
       clearAutoSwipeTimer();
     };
   }, [clearAutoSwipeTimer]);
+
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      StatusBar.setBarStyle("dark-content", true);
+      StatusBar.setBackgroundColor("#f9fafb", true);
+    } else {
+      StatusBar.setBarStyle("dark-content", true);
+    }
+  }, []);
 
   useEffect(() => {
     const checkFirstTimeUser = async () => {
@@ -448,8 +459,12 @@ const DashboardContent = () => {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#f9fafb"
+        translucent={false}
+      />
+      <SafeAreaView className="flex-1 bg-white">
         {}
         <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
           <TouchableOpacity
