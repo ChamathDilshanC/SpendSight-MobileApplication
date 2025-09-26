@@ -9,38 +9,79 @@
 <!-- Demo Video Section -->
 <table>
 <tr>
+## 🚀 Get Started
+
+<div align="center">
+  
+### Experience SpendSight Today
+*Track expenses effortlessly • Beautiful UI • Completely Free*
+
+<br>
+
+<table>
+<tr>
 <td align="center" width="50%">
 
-### 🎥 Live Demo
-*Interactive video walkthrough coming soon*
+#### 🎥 **Live Demo**
+*See SpendSight in action*
 
-<a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/🎥_Watch_Demo-Coming_Soon-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=1a1a1a" alt="Watch Demo">
+<a href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID" target="_blank">
+  <img src="https://img.shields.io/badge/🎬_Watch_Demo-Coming_Soon-FF6B6B?style=for-the-badge&logo=youtube&logoColor=white&labelColor=2C2C2C&border_radius=12" alt="Watch Demo" />
 </a>
 
-*Full feature demonstration • UI/UX showcase*
+*Complete walkthrough • Feature showcase*
 
 </td>
 <td align="center" width="50%">
 
-### 📱 Download Now
-*Ready to install • No registration needed*
+#### 📱 **Download Now**
+*Ready to install • No signup required*
 
-<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/📱_Download_APK-Available_Now-4285F4?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=1a1a1a" alt="Download APK">
+<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank">
+  <img src="https://img.shields.io/badge/📦_Download_APK-Available_Now-4ECDC4?style=for-the-badge&logo=android&logoColor=white&labelColor=2C2C2C" alt="Download APK" />
 </a>
 
-*Direct from Google Drive • Instant access*
+*Direct download • Instant access*
 
 </td>
 </tr>
 </table>
 
+</div>
+
 ---
 
-<!-- App Preview -->
-<div>
-<img width="320" height="320" alt="SpendSight App Preview" src="https://github.com/user-attachments/assets/7f82df65-ad79-4053-b149-5828dfa4904f" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
+<div align="center">
+
+### 📲 **Latest Version - SpendSight v1.0**
+*Scan QR code for instant download*
+
+<br>
+
+<img width="200" height="200" alt="QR Code - Download SpendSight" src="https://github.com/user-attachments/assets/a775698e-d4d2-4ef6-9b18-7e6675a843cd" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);" />
+
+<br><br>
+
+```
+📱 Scan with your camera app to download instantly
+🔒 Safe & secure APK from Google Drive  
+⚡ No registration needed - Get started immediately
+```
+
+**Latest Update:** `SpendSightExpenseTrackerApp-V1.apk`
+
+</div>
+
+---
+
+<div align="center">
+  
+*✨ Built with passion • Made for everyone • Always free*
+
+[![Stars](https://img.shields.io/github/stars/yourusername/spendsight?style=social)](https://github.com/yourusername/spendsight)
+[![Download](https://img.shields.io/badge/Downloads-1K+-brightgreen)](https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W)
+[![Version](https://img.shields.io/badge/Version-1.0-blue)](https://github.com/yourusername/spendsight/releases)
+
 </div>
 
 <!-- Quick Stats -->
