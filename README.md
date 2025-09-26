@@ -74,16 +74,6 @@
 
 ---
 
-<div align="center">
-  
-*✨ Built with passion • Made for everyone • Always free*
-
-[![Stars](https://img.shields.io/github/stars/yourusername/spendsight?style=social)](https://github.com/yourusername/spendsight)
-[![Download](https://img.shields.io/badge/Downloads-1K+-brightgreen)](https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W)
-[![Version](https://img.shields.io/badge/Version-1.0-blue)](https://github.com/yourusername/spendsight/releases)
-
-</div>
-
 <!-- Quick Stats -->
 <table>
 <tr>
@@ -135,30 +125,6 @@
 
 ---
 
-## ⚡ Quick Access Links
-
-<div align="center">
-<table>
-<tr>
-<td align="center">
-<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
-<img src="https://img.shields.io/badge/📁_Google_Drive-Direct_Link-34A853?style=for-the-badge&logo=googledrive&logoColor=white&labelColor=1a1a1a" alt="Google Drive">
-</a>
-</td>
-<td align="center">
-<a href="#-system-requirements" target="_blank" rel="noopener noreferrer">
-<img src="https://img.shields.io/badge/📋_Requirements-Check_Here-6C757D?style=for-the-badge&logo=checkmk&logoColor=white&labelColor=1a1a1a" alt="Requirements">
-</a>
-</td>
-<td align="center">
-<a href="#-features" target="_blank" rel="noopener noreferrer">
-<img src="https://img.shields.io/badge/✨_Features-Explore-9C27B0?style=for-the-badge&logo=sparkles&logoColor=white&labelColor=1a1a1a" alt="Features">
-</a>
-</td>
-</tr>
-</table>
-</div>
-
 ## 🛡️ System Requirements
 
 <div align="center">
@@ -209,18 +175,6 @@
 </div>
 
 ---
-
-<div align="center">
-
-### 🌟 Ready to Transform Your Financial Life?
-
-<a href="https://drive.google.com/drive/u/0/folders/1Bm_By3p1FqOwMuCM-gya8ath9r6oHH2W" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/🚀_Get_Started_Now-Download_SpendSight-FF6B35?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a1a&shadowColor=000" alt="Get Started Now">
-</a>
-
-*Join the future of personal finance management*
-
-</div>
 
 ## Overview
 
