@@ -13,12 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB79mMkUoyI6zvVZi5sUrRikKLbAah6q5Y",
-  authDomain: "spendsightmobileapp.firebaseapp.com",
-  projectId: "spendsightmobileapp",
-  storageBucket: "spendsightmobileapp.firebasestorage.app",
-  messagingSenderId: "45937352137",
-  appId: "1:45937352137:web:bfd20d237f26ad87335c18",
+//update with Your Details
 };
 
 
