@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDashboardBackButton } from "../../hooks/useBackButton";
 
+import { LoadingAnimation } from "@/components/LoadingAnimation";
 import AppHeader from "../../components/AppHeader";
 import { ProfileImagePicker } from "../../components/ProfileImagePicker";
 import { useAuth } from "../../context/FirebaseAuthContext";
@@ -67,6 +68,7 @@ export default function SettingsScreen() {
   useDashboardBackButton(true);
   const { authState, logout, updateUser } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadProfileImage = async () => {
@@ -98,17 +100,40 @@ export default function SettingsScreen() {
     loadProfileImage();
   }, [authState?.user?.id, authState?.user?.profileImage]);
 
-  const handleProfileImageUpload = (imageUrl: string) => {
-    setProfileImage(imageUrl);
+  const handleProfileImageUpload = async (imageUri: string) => {
+    if (!authState?.user?.id) {
+      Alert.alert("Error", "User not authenticated. Please log in.");
+      return;
+    }
 
-    updateUser({ profileImage: imageUrl });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      console.log("Profile image state after upload:", profileImage);
-    }, 100);
+    try {
+      console.log("🚀 Starting profile image upload from Settings...");
+
+      const result = await UserProfileService.uploadProfileImage(
+        authState.user.id,
+        imageUri
+      );
+
+      if (result.success && result.imageUrl) {
+        setProfileImage(result.imageUrl);
+        updateUser({ profileImage: result.imageUrl });
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        Alert.alert("Success", "Profile picture updated!");
+      } else {
+        throw new Error(result.error || "Upload failed");
+      }
+    } catch (error: any) {
+      console.error("❌ Upload failed:", error);
+      Alert.alert("Upload Failed", error.message || "Please try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
   const handleProfileImageError = (error: string) => {
     console.error("Profile image upload error in settings:", error);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -173,8 +198,12 @@ export default function SettingsScreen() {
               onImageUploaded={handleProfileImageUpload}
               onError={handleProfileImageError}
             >
-              <View className="relative">
-                {profileImage ? (
+              <View className="relative w-20 h-20">
+                {isLoading ? (
+                  <View className="items-center justify-center w-20 h-20 bg-gray-200 rounded-full">
+                    <LoadingAnimation size={50} />
+                  </View>
+                ) : profileImage ? (
                   <Image
                     source={{ uri: profileImage }}
                     className="w-20 h-20 rounded-full"
@@ -191,10 +220,11 @@ export default function SettingsScreen() {
                   </View>
                 )}
 
-                {}
-                <View className="absolute bottom-0 right-0 p-1 bg-white border-2 border-gray-100 rounded-full">
-                  <Ionicons name="camera" size={14} color="#6B7280" />
-                </View>
+                {!isLoading && (
+                  <View className="absolute bottom-0 right-0 p-1 bg-white border-2 border-gray-100 rounded-full">
+                    <Ionicons name="camera" size={14} color="#6B7280" />
+                  </View>
+                )}
               </View>
             </ProfileImagePicker>
 

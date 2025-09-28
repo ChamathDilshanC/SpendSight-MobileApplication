@@ -20,11 +20,12 @@ import AppHeader from "../../components/AppHeader";
 import { ProfileImagePicker } from "../../components/ProfileImagePicker";
 import { useAuth } from "../../context/FirebaseAuthContext";
 import { UserProfileService } from "../../services/UserProfileService";
+import { LoadingAnimation } from "@/components/LoadingAnimation";
 
 export default function EditProfileScreen() {
   const { authState, updateUser } = useAuth();
   const [fullName, setFullName] = useState(authState?.user?.fullName || "");
-  const [email] = useState(authState?.user?.email || ""); // Made read-only
+  const [email] = useState(authState?.user?.email || "");
   const [profileImage, setProfileImage] = useState(
     authState?.user?.profileImage || authState?.user?.profilePicture || null
   );
@@ -37,7 +38,7 @@ export default function EditProfileScreen() {
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // Only validate full name now
+
     if (!fullName.trim()) {
       newErrors.fullName = "Full name is required";
     } else if (fullName.trim().length < 2) {
@@ -62,26 +63,26 @@ export default function EditProfileScreen() {
         throw new Error("User ID not found");
       }
 
-      // Only update full name (email editing is disabled)
+
       const updatedUserData: {
         fullName?: string;
       } = {};
 
-      // Only add fullName if it's different from current
+
       if (fullName.trim() !== (authState.user.fullName || "")) {
         updatedUserData.fullName = fullName.trim();
       }
 
       console.log("📝 Data to update:", updatedUserData);
 
-      // Only call update if there are changes
+
       if (Object.keys(updatedUserData).length > 0) {
         await UserProfileService.updateUserProfile(
           authState.user.id,
           updatedUserData
         );
 
-        // Update local auth state
+
         updateUser(updatedUserData);
       }
 
@@ -108,26 +109,38 @@ export default function EditProfileScreen() {
     }
   };
 
-  const handleProfileImageUpload = (imageUrl: string) => {
-    // Show premium feature alert instead of actually setting the image
+const handleProfileImageUpload = async (imageUrl: string) => {
+  setIsLoading(true);
+
+  try {
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+
+
+
+
+    setProfileImage(imageUrl);
+
     Alert.alert(
-      "Premium Feature",
-      "Profile image upload is available with premium subscription. Would you like to learn more about premium features?",
+      "Success!",
+      "Your profile picture has been updated successfully.",
       [
-        { text: "Maybe Later", style: "cancel" },
         {
-          text: "Learn More",
+          text: "OK",
           onPress: () => {
-            Alert.alert(
-              "Premium Features",
-              "🌟 Upgrade to Premium:\n\n• Custom profile pictures\n• Unlimited cloud storage\n• Advanced analytics\n• Export data in multiple formats\n• Priority support\n• Ad-free experience\n\nUpgrade today to unlock all features!"
-            );
+            updateUser({ profileImage: imageUrl });
           },
         },
       ]
     );
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  };
+  } catch (error) {
+    console.error("Upload failed:", error);
+    Alert.alert("Upload Failed", "Something went wrong. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleProfileImageError = (error: string) => {
     console.error("Profile image upload error:", error);
@@ -172,17 +185,14 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <AppHeader
-        title="Edit Profile"
-        showBackButton={true}
-      />
+      <AppHeader title="Edit Profile" showBackButton={true} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         <ScrollView className="flex-1 bg-gray-50">
-          {/* Profile Image Section */}
+          {}
           <View className="px-6 py-8 bg-white">
             <View className="items-center">
               <ProfileImagePicker
@@ -190,8 +200,12 @@ export default function EditProfileScreen() {
                 onImageUploaded={handleProfileImageUpload}
                 onError={handleProfileImageError}
               >
-                <View className="relative">
-                  {profileImage ? (
+                <View className="relative w-24 h-24">
+                  {isLoading ? (
+                    <View className="items-center justify-center w-24 h-24 bg-gray-200 rounded-full">
+                      <LoadingAnimation size={60} />
+                    </View>
+                  ) : profileImage ? (
                     <Image
                       source={{ uri: profileImage }}
                       className="w-24 h-24 rounded-full"
@@ -205,14 +219,18 @@ export default function EditProfileScreen() {
                     </View>
                   )}
 
-                  <View className="absolute bottom-0 right-0 p-2 bg-blue-600 border-2 border-white rounded-full">
-                    <Ionicons name="camera" size={16} color="white" />
-                  </View>
+                  {!isLoading && (
+                    <>
+                      <View className="absolute bottom-0 right-0 p-2 bg-blue-600 border-2 border-white rounded-full">
+                        <Ionicons name="camera" size={16} color="white" />
+                      </View>
 
-                  {/* Premium Badge */}
-                  <View className="absolute top-0 right-0 px-2 py-1 bg-yellow-500 rounded-full">
-                    <Ionicons name="star" size={12} color="white" />
-                  </View>
+                      {}
+                      <View className="absolute top-0 right-0 px-2 py-1 bg-yellow-500 rounded-full">
+                        <Ionicons name="star" size={12} color="white" />
+                      </View>
+                    </>
+                  )}
                 </View>
               </ProfileImagePicker>
 
@@ -225,20 +243,20 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Form Section */}
+          {}
           <View className="px-6 py-6 mt-6 bg-white">
             <Text className="mb-6 text-lg font-semibold text-gray-900">
               Personal Information
             </Text>
 
-            {/* General Error */}
+            {}
             {errors.general && (
               <View className="p-4 mb-4 border border-red-200 rounded-lg bg-red-50">
                 <Text className="text-sm text-red-600">{errors.general}</Text>
               </View>
             )}
 
-            {/* Full Name Input */}
+            {}
             <View className="mb-6">
               <Text className="mb-2 text-sm font-medium text-gray-700">
                 Full Name
@@ -260,7 +278,7 @@ export default function EditProfileScreen() {
               )}
             </View>
 
-            {/* Email Input (Read-only) */}
+            {}
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-sm font-medium text-gray-700">
@@ -296,7 +314,7 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-            {/* Save Button */}
+            {}
             <TouchableOpacity
               onPress={handleSave}
               disabled={isLoading}
@@ -310,7 +328,7 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Account Info */}
+          {}
           <View className="px-6 py-6 mt-6 bg-white">
             <Text className="mb-4 text-lg font-semibold text-gray-900">
               Account Information
@@ -368,7 +386,7 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Security Notice */}
+          {}
           <View className="px-6 py-6 mt-6 bg-white">
             <View className="flex-row items-center mb-3">
               <Ionicons name="shield-checkmark" size={20} color="#059669" />
@@ -404,7 +422,7 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Premium Features Section */}
+          {}
           <View className="px-6 py-6 mx-6 mt-6 mb-8 border border-yellow-200 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
             <View className="flex-row items-center mb-4">
               <Ionicons name="star" size={24} color="#F59E0B" />
