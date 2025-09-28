@@ -29,6 +29,7 @@ import { useAuth } from "../../context/FirebaseAuthContext";
 import { useDashboardBackButton } from "../../hooks/useBackButton";
 import { AccountService, CurrencyType } from "../../services/AccountService";
 import { NavigationManager } from "../../utils/navigationManager";
+import Dialog from "react-native-dialog";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -57,6 +58,21 @@ const DashboardContent = () => {
   const loopAutoSwipe = true;
 
   useDashboardBackButton(true);
+
+  const [isBudgetDialogVisible, setIsBudgetDialogVisible] = useState(false);
+  const [budgetInputValue, setBudgetInputValue] = useState("");
+  const [selectedCurrencyForDialog, setSelectedCurrencyForDialog] =
+    useState<CurrencyType | null>(null);
+
+  const inputRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (isBudgetDialogVisible && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isBudgetDialogVisible]);
 
   const slideAnim = useSharedValue(-DRAWER_WIDTH);
   const overlayAnim = useSharedValue(0);
@@ -261,13 +277,20 @@ const DashboardContent = () => {
             promptForBudgetAmount("LKR");
           },
         },
-      ]
+      ],
+      { cancelable: false }
     );
   };
 
-  const promptForBudgetAmount = (currency: CurrencyType) => {
-    const currencyName = currency === "LKR" ? "Lankan Rupees" : "US Dollars";
-    const currencySymbol = AccountService.getCurrencySymbol(currency);
+const promptForBudgetAmount = (currency: CurrencyType) => {
+  const currencyName = currency === "LKR" ? "Lankan Rupees" : "US Dollars";
+
+  if (Platform.OS === "android") {
+
+    setSelectedCurrencyForDialog(currency);
+    setBudgetInputValue("");
+    setIsBudgetDialogVisible(true);
+  } else {
 
     Alert.prompt(
       `Budget Setup (${currency})`,
@@ -298,7 +321,8 @@ const DashboardContent = () => {
       "",
       "numeric"
     );
-  };
+  }
+};
 
   const handleBudgetSetup = async (
     budgetInput: string,
@@ -772,6 +796,48 @@ const DashboardContent = () => {
           overlayAnimatedStyle={overlayAnimatedStyle}
           drawerAnimatedStyle={drawerAnimatedStyle}
         />
+        {}
+        <Dialog.Container visible={isBudgetDialogVisible}>
+          <Dialog.Title>
+            Budget Setup ({selectedCurrencyForDialog})
+          </Dialog.Title>
+          <Dialog.Description>
+            Enter your monthly salary/budget in{" "}
+            {selectedCurrencyForDialog === "LKR"
+              ? "Lankan Rupees"
+              : "US Dollars"}
+            :
+          </Dialog.Description>
+          <Dialog.Input
+            placeholder="Enter amount"
+            keyboardType="numeric"
+            value={budgetInputValue}
+            onChangeText={setBudgetInputValue}
+          />
+          <Dialog.Button
+            label="Cancel"
+            onPress={() => setIsBudgetDialogVisible(false)}
+          />
+          <Dialog.Button
+            label="Continue"
+            onPress={() => {
+              if (budgetInputValue.trim() && selectedCurrencyForDialog) {
+                setIsBudgetDialogVisible(false);
+                handleBudgetSetup(
+                  budgetInputValue.trim(),
+                  selectedCurrencyForDialog
+                );
+              } else {
+                Alert.alert("Error", "Please enter a valid amount", [
+                  {
+                    text: "OK",
+                    onPress: () => setIsBudgetDialogVisible(true),
+                  },
+                ]);
+              }
+            }}
+          />
+        </Dialog.Container>
       </SafeAreaView>
     </>
   );
