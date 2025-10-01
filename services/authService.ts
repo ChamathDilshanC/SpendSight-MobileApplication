@@ -7,7 +7,7 @@ import {
   UserCredential,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
-import { auth, db } from "@/firebase";
+import { auth, db } from "../firebase";
 import { User } from "../types/user";
 import { SessionManager } from "../utils/sessionManager";
 

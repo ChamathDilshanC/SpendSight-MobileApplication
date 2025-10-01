@@ -1,4 +1,3 @@
-import { db } from "@/firebase";
 import {
   addDoc,
   collection,
@@ -12,6 +11,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+import { db } from "../firebase";
 import { Account } from "../types/finance";
 
 export type CurrencyType = "USD" | "LKR";

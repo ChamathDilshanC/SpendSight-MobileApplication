@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import { Alert } from "react-native";
 
-
 import {
   createUserWithEmailAndPassword,
   User as FirebaseUser,
@@ -19,7 +18,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
-import { auth, db } from "@/firebase";
+import { auth, db } from "../firebase";
 
 import {
   AuthContextType,
@@ -29,7 +28,6 @@ import {
   UserRegistrationData,
 } from "../types/user";
 import { SessionManager } from "../utils/sessionManager";
-
 
 let GoogleSignin: any = null;
 try {
@@ -159,7 +157,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
   useEffect(() => {
-
     if (GoogleSignin) {
       try {
         GoogleSignin.configure({
@@ -321,7 +318,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "CLEAR_ERROR" });
 
-
     if (!GoogleSignin) {
       dispatch({
         type: "SET_ERROR",
@@ -386,7 +382,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = async (): Promise<void> => {
     try {
       console.log("🚪 Logging out user...");
-
 
       if (GoogleSignin) {
         try {

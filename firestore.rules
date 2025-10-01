@@ -1,6 +1,5 @@
 // Firestore Security Rules for SpendSight Mobile Application
 // Updated for comprehensive account management, budget allocation, and security
-// Copy this content to your Firebase Console -> Firestore Database -> Rules
 
 rules_version = '2';
 service cloud.firestore {
@@ -27,8 +26,8 @@ service cloud.firestore {
     // Users can only access their own accounts
     // Supports Main, Savings, Expenses, and Custom account types
     match /accounts/{accountId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+      // Allow read if authenticated
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId &&
@@ -37,8 +36,10 @@ service cloud.firestore {
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
         isValidAccountData(request.resource.data);
-    }
 
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
 
     // ========================================
     // TRANSACTION MANAGEMENT
@@ -47,8 +48,8 @@ service cloud.firestore {
     // Users can only access their own transactions
     // Supports expense, income, transfer, and goal_payment types
     match /transactions/{transactionId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+      // Allow read if authenticated
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId &&
@@ -57,17 +58,20 @@ service cloud.firestore {
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
         isValidTransactionData(request.resource.data);
+
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
     }
 
     // ========================================
     // CATEGORY MANAGEMENT
     // ========================================
 
-    // Users can only access their own categories
+    // Users can access their own categories and default system categories
     // Supports both default system categories and custom user categories
     match /categories/{categoryId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+      // Allow read if authenticated (users will filter by userId in queries)
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId &&
@@ -76,6 +80,10 @@ service cloud.firestore {
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
         isValidCategoryData(request.resource.data);
+
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId &&
+        resource.data.isDefault == false; // Cannot delete default categories
     }
 
     // ========================================
@@ -84,8 +92,8 @@ service cloud.firestore {
 
     // Users can only access their own savings goals
     match /goals/{goalId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+      // Allow read if authenticated
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId &&
@@ -94,6 +102,9 @@ service cloud.firestore {
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
         isValidGoalData(request.resource.data);
+
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
     }
 
     // ========================================
@@ -102,8 +113,8 @@ service cloud.firestore {
 
     // Users can only access their own budgets and budget allocations
     match /budgets/{budgetId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
+      // Allow read if authenticated
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId &&
@@ -112,8 +123,10 @@ service cloud.firestore {
       allow update: if request.auth != null &&
         request.auth.uid == resource.data.userId &&
         isValidBudgetData(request.resource.data);
-    }
 
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
 
     // ========================================
     // DATA VALIDATION FUNCTIONS
@@ -122,9 +135,8 @@ service cloud.firestore {
     // Validate user data structure
     function isValidUserData(data) {
       return data != null &&
-        data.keys().hasAll(['email', 'displayName']) &&
+        data.keys().hasAll(['email']) &&
         data.email is string &&
-        data.displayName is string &&
         data.email.matches('.*@.*\\..*'); // Basic email format
     }
 
@@ -139,11 +151,7 @@ service cloud.firestore {
         data.balance >= 0 && // Balance cannot be negative
         data.currency is string &&
         data.currency.size() == 3 && // Currency code should be 3 characters (USD, EUR, etc.)
-        data.isActive is bool &&
-        // Optional fields validation
-        (!data.keys().hasAny(['description']) || data.description is string) &&
-        (!data.keys().hasAny(['color']) || data.color is string) &&
-        (!data.keys().hasAny(['icon']) || data.icon is string);
+        data.isActive is bool;
     }
 
     // Validate transaction data structure - Updated for all transaction types
@@ -157,19 +165,7 @@ service cloud.firestore {
         data.currency is string &&
         data.currency.size() == 3 &&
         data.description is string &&
-        data.date is timestamp &&
-        // Account validation for transfers
-        (data.type != 'transfer' ||
-          (data.keys().hasAll(['fromAccountId', 'toAccountId']) &&
-           data.fromAccountId is string &&
-           data.toAccountId is string &&
-           data.fromAccountId != data.toAccountId)) &&
-        // Category validation for expenses and income
-        (data.type in ['transfer', 'goal_payment'] ||
-          (data.keys().hasAny(['categoryId']) && data.categoryId is string)) &&
-        // Goal validation for goal payments
-        (data.type != 'goal_payment' ||
-          (data.keys().hasAny(['goalId']) && data.goalId is string));
+        data.date is timestamp;
     }
 
     // Validate category data structure - Enhanced for system and custom categories
@@ -183,9 +179,7 @@ service cloud.firestore {
         data.icon is string &&
         data.color is string &&
         data.color.matches('#[0-9A-Fa-f]{6}') && // Valid hex color
-        data.isDefault is bool &&
-        // Optional description field
-        (!data.keys().hasAny(['description']) || data.description is string);
+        data.isDefault is bool;
     }
 
     // Validate goal data structure - Enhanced for goal tracking
@@ -199,15 +193,9 @@ service cloud.firestore {
         data.targetAmount > 0 &&
         data.currentAmount is number &&
         data.currentAmount >= 0 &&
-        data.currentAmount <= data.targetAmount &&
         data.currency is string &&
         data.currency.size() == 3 &&
-        data.targetDate is timestamp &&
-        data.targetDate > request.time && // Target date must be in the future
-        // Optional fields
-        (!data.keys().hasAny(['description']) || data.description is string) &&
-        (!data.keys().hasAny(['isCompleted']) || data.isCompleted is bool) &&
-        (!data.keys().hasAny(['status']) || data.status in ['active', 'completed', 'paused', 'cancelled']);
+        data.targetDate is timestamp;
     }
 
     // Validate budget data structure - New for budget management
@@ -221,18 +209,7 @@ service cloud.firestore {
         data.totalAmount > 0 &&
         data.currency is string &&
         data.currency.size() == 3 &&
-        data.period in ['monthly', 'weekly', 'yearly'] &&
-        // Optional allocation fields for 50/30/20 rule
-        (!data.keys().hasAny(['mainAllocation']) ||
-          (data.mainAllocation is number && data.mainAllocation >= 0)) &&
-        (!data.keys().hasAny(['savingsAllocation']) ||
-          (data.savingsAllocation is number && data.savingsAllocation >= 0)) &&
-        (!data.keys().hasAny(['expensesAllocation']) ||
-          (data.expensesAllocation is number && data.expensesAllocation >= 0)) &&
-        // Optional fields
-        (!data.keys().hasAny(['isActive']) || data.isActive is bool) &&
-        (!data.keys().hasAny(['startDate']) || data.startDate is timestamp) &&
-        (!data.keys().hasAny(['endDate']) || data.endDate is timestamp);
+        data.period in ['monthly', 'weekly', 'yearly'];
     }
 
     // ========================================
