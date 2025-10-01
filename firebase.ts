@@ -11,6 +11,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// add gitignore
 const firebaseConfig = {
   apiKey: "AIzaSyB79mMkUoyI6zvVZi5sUrRikKLbAah6q5Y",
   authDomain: "spendsightmobileapp.firebaseapp.com",

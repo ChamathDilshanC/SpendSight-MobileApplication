@@ -43,3 +43,4 @@ app-example
 /android
 PROFILE_IMAGE_FEATURE.md
 PROFILE_IMAGE_TESTING_GUIDE.md
+firebase.ts
