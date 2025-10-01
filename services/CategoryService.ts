@@ -1,3 +1,4 @@
+import { db } from "@/firebase";
 import {
   addDoc,
   collection,
@@ -11,7 +12,6 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../firebase";
 import { Category, DefaultCategories } from "../types/finance";
 
 export class CategoryService {

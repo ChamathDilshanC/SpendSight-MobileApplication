@@ -1,3 +1,4 @@
+import { db } from "@/firebase";
 import {
   collection,
   doc,
@@ -10,7 +11,6 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../firebase";
 import { Transaction } from "../types/finance";
 import { BalanceNotificationService } from "./BalanceNotificationService";
 import { GoalNotificationService } from "./GoalNotificationService";

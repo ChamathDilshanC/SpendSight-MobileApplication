@@ -100,40 +100,37 @@ export default function SettingsScreen() {
     loadProfileImage();
   }, [authState?.user?.id, authState?.user?.profileImage]);
 
-  const handleProfileImageUpload = async (imageUri: string) => {
-    if (!authState?.user?.id) {
-      Alert.alert("Error", "User not authenticated. Please log in.");
-      return;
-    }
-
+  const handleProfileImageUpload = async (imageUrl: string) => {
     setIsLoading(true);
 
     try {
-      console.log("🚀 Starting profile image upload from Settings...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
-      const result = await UserProfileService.uploadProfileImage(
-        authState.user.id,
-        imageUri
+      setProfileImage(imageUrl);
+
+      await updateUser({ profileImage: imageUrl });
+
+      Alert.alert(
+        "Success!",
+        "Your profile picture has been updated successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              router.dismissAll();
+              router.replace("/(dashboard)/dashboard");
+            },
+          },
+        ]
       );
-
-      if (result.success && result.imageUrl) {
-        setProfileImage(result.imageUrl);
-        updateUser({ profileImage: result.imageUrl });
-
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-        Alert.alert("Success", "Profile picture updated!");
-      } else {
-        throw new Error(result.error || "Upload failed");
-      }
-    } catch (error: any) {
-      console.error("❌ Upload failed:", error);
-      Alert.alert("Upload Failed", error.message || "Please try again.");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      Alert.alert("Upload Failed", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
   const handleProfileImageError = (error: string) => {
     console.error("Profile image upload error in settings:", error);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

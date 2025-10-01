@@ -19,8 +19,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
-
+import { auth, db } from "@/firebase";
 
 import {
   AuthContextType,

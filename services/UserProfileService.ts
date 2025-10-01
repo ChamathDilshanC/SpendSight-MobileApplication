@@ -1,3 +1,4 @@
+import { db } from "@/firebase";
 import { getAuth } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import {
@@ -7,7 +8,6 @@ import {
   ref,
   uploadBytes,
 } from "firebase/storage";
-import { db } from "../firebase";
 
 export interface ProfileImageUploadResult {
   success: boolean;

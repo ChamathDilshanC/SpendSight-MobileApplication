@@ -20,7 +20,7 @@ import React, {
   useReducer,
 } from "react";
 import { Platform } from "react-native";
-import { auth, db } from "../firebase";
+import { auth, db }  from "@/firebase";
 import {
   AuthContextType,
   AuthState,
